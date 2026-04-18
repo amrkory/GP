@@ -1,0 +1,427 @@
+/* ── auth-shared.scss  (import in every auth component's styleUrls) ───────── */
+
+$red:        #D84040;
+$red-dark:   #B83030;
+$red-light:  #FEF2F2;
+$red-mid:    #FBDCDC;
+$gray-bg:    #F7F8FA;
+$border:     #E8E8E8;
+$text:       #111111;
+$muted:      #888888;
+$success:    #0F6E56;
+
+/* Full-page centred layout (desktop) */
+.auth-page {
+  min-height: 100vh;
+  background: $gray-bg;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+}
+
+/* Centred card */
+.auth-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 40px 36px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.07);
+}
+
+/* Logo strip */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 28px;
+
+  .brand-icon {
+    width: 44px;
+    height: 44px;
+    background: $red;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    svg { width: 24px; height: 24px; fill: none; stroke: #fff; stroke-width: 2; }
+  }
+
+  .brand-tagline {
+    font-size: 13px;
+    color: $muted;
+  }
+}
+
+/* Page heading */
+.auth-title {
+  font-size: 26px;
+  font-weight: 700;
+  color: $text;
+  margin-bottom: 6px;
+}
+
+.auth-sub {
+  font-size: 14px;
+  color: $muted;
+  margin-bottom: 28px;
+}
+
+/* Input group */
+.field {
+  margin-bottom: 16px;
+
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: $text;
+    margin-bottom: 6px;
+
+    .req { color: $red; }
+  }
+
+  .input-wrap {
+    position: relative;
+
+    .input-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #bbb;
+      display: flex;
+      pointer-events: none;
+    }
+
+    .eye-btn {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #bbb;
+      padding: 0;
+      display: flex;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 12px 14px 12px 42px;
+      border: 1.5px solid $border;
+      border-radius: 12px;
+      font-size: 14px;
+      font-family: 'Cairo', sans-serif;
+      color: $text;
+      background: #fff;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      appearance: none;
+
+      &::placeholder { color: #c0c0c0; }
+
+      &:focus {
+        border-color: $red;
+        box-shadow: 0 0 0 3px rgba($red, 0.10);
+      }
+
+      &.no-icon { padding-left: 14px; }
+    }
+
+    /* validation states */
+    &.invalid input, &.invalid select { border-color: $red; }
+    &.valid input, &.valid select { border-color: #22c55e; }
+  }
+
+  .field-error {
+    font-size: 12px;
+    color: $red;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+/* Two-column row */
+.row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Primary button */
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: $red;
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'Cairo', sans-serif;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity .15s, transform .1s;
+
+  &:hover:not(:disabled) { opacity: 0.92; }
+  &:active:not(:disabled) { transform: scale(0.99); }
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
+
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+}
+
+/* Divider */
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+  color: $muted;
+  font-size: 13px;
+
+  &::before, &::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: $border;
+  }
+}
+
+/* Footer link */
+.auth-footer {
+  text-align: center;
+  font-size: 14px;
+  color: $muted;
+  margin-top: 20px;
+
+  a {
+    color: $red;
+    font-weight: 600;
+    text-decoration: none;
+    &:hover { text-decoration: underline; }
+  }
+}
+
+/* Global error banner */
+.alert-error {
+  background: $red-light;
+  border: 1px solid $red-mid;
+  color: $red-dark;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Progress steps (doctor registration) */
+.steps {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 24px;
+
+  .step {
+    flex: 1;
+    height: 4px;
+    border-radius: 4px;
+    background: $border;
+    transition: background .3s;
+
+    &.done, &.active { background: $red; }
+  }
+}
+
+.step-label {
+  font-size: 13px;
+  color: $muted;
+  margin-bottom: 20px;
+
+  strong { color: $text; }
+}
+
+/* Section card inside form */
+.form-section {
+  background: #FAFAFA;
+  border: 1px solid $border;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 16px;
+
+  h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: $text;
+    margin-bottom: 16px;
+  }
+}
+
+/* OTP boxes */
+.otp-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin: 24px 0;
+
+  input {
+    width: 52px;
+    height: 56px;
+    border: 2px solid $border;
+    border-radius: 12px;
+    font-size: 22px;
+    font-weight: 700;
+    text-align: center;
+    color: $text;
+    outline: none;
+    transition: border-color .2s;
+    font-family: 'Cairo', sans-serif;
+
+    &:focus { border-color: $red; }
+    &.filled { border-color: $red; background: $red-light; }
+  }
+}
+
+/* Resend */
+.resend {
+  text-align: center;
+  font-size: 13px;
+  color: $muted;
+  margin-top: 12px;
+
+  button {
+    background: none; border: none; cursor: pointer;
+    color: $red; font-weight: 600; font-family: 'Cairo', sans-serif;
+    &:disabled { opacity: .5; cursor: default; }
+  }
+}
+
+/* Role card */
+.role-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.role-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px;
+  border: 2px solid $border;
+  border-radius: 14px;
+  cursor: pointer;
+  background: #fff;
+  transition: border-color .15s, background .15s;
+  text-align: left;
+
+  &.selected {
+    border-color: $red;
+    background: $red-light;
+  }
+
+  .role-icon-box {
+    width: 46px; height: 46px;
+    background: $red-light;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 22px;
+  }
+
+  .role-text {
+    flex: 1;
+
+    strong { display: block; font-size: 15px; color: $text; }
+    span   { font-size: 13px; color: $muted; }
+  }
+
+  .radio-dot {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    border: 2px solid $border;
+    flex-shrink: 0;
+    transition: all .15s;
+    position: relative;
+
+    &.on {
+      border-color: $red;
+      background: $red;
+      &::after {
+        content: '';
+        position: absolute;
+        inset: 3px;
+        border-radius: 50%;
+        background: #fff;
+      }
+    }
+  }
+}
+
+/* Back button */
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: $muted;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 20px;
+  font-family: 'Cairo', sans-serif;
+
+  &:hover { color: $text; }
+}
+
+/* Password strength bar */
+.strength-bar {
+  height: 4px;
+  border-radius: 4px;
+  margin-top: 6px;
+  transition: all .3s;
+
+  &.weak   { background: #ef4444; width: 33%; }
+  &.medium { background: #f59e0b; width: 66%; }
+  &.strong { background: #22c55e; width: 100%; }
+}
+
+.strength-label {
+  font-size: 11px;
+  margin-top: 3px;
+  &.weak   { color: #ef4444; }
+  &.medium { color: #f59e0b; }
+  &.strong { color: #22c55e; }
+}
+
+/* Success state */
+.success-icon {
+  width: 72px; height: 72px;
+  background: #dcfce7;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+
+  svg { width: 36px; height: 36px; stroke: #16a34a; fill: none; stroke-width: 2.5; }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

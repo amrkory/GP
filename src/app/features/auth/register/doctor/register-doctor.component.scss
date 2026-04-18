@@ -1,0 +1,51 @@
+    $red:#D84040; $red-light:#FEF2F2; $gray-bg:#F7F8FA; $border:#E8E8E8; $text:#111; $muted:#888;
+    .auth-page{min-height:100vh;background:$gray-bg;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+    .auth-card{background:#fff;border-radius:20px;padding:36px 28px;width:100%;max-width:520px;box-shadow:0 4px 32px rgba(0,0,0,0.07)}
+    .back-btn{display:flex;align-items:center;gap:6px;background:none;border:none;color:$muted;font-size:14px;cursor:pointer;padding:0;margin-bottom:16px;font-family:'Cairo',sans-serif}
+    .steps{display:flex;gap:6px;margin-bottom:12px}
+    .step{flex:1;height:4px;border-radius:4px;background:$border;transition:background .3s}
+    .step.done,.step.active{background:$red}
+    .step-label{font-size:13px;color:$muted;margin-bottom:16px}
+    .step-label strong{color:$text}
+    .auth-title{font-size:24px;font-weight:700;color:$text;margin-bottom:16px}
+    .alert-error{background:$red-light;border:1px solid #FBDCDC;color:#B83030;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:16px}
+    .form-section{background:#FAFAFA;border:1px solid $border;border-radius:14px;padding:20px;margin-bottom:16px}
+    .form-section h3{font-size:15px;font-weight:700;color:$text;margin-bottom:16px}
+    .field{margin-bottom:14px}
+    .field label{display:block;font-size:13px;font-weight:600;color:$text;margin-bottom:6px}
+    .req{color:$red}
+    .input-wrap{position:relative}
+    .input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#bbb;display:flex;pointer-events:none}
+    .eye-btn{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#bbb;padding:0;display:flex}
+    .input-wrap input,.input-wrap select{width:100%;padding:11px 14px 11px 42px;border:1.5px solid $border;border-radius:10px;font-size:14px;font-family:'Cairo',sans-serif;color:$text;background:#fff;outline:none;transition:border-color .2s;box-sizing:border-box;appearance:none}
+    .input-wrap input::placeholder{color:#c0c0c0}
+    .input-wrap input:focus,.input-wrap select:focus{border-color:$red;box-shadow:0 0 0 3px rgba(216,64,64,0.08)}
+    .input-wrap.invalid input,.input-wrap.invalid select{border-color:$red}
+    .field-error{font-size:12px;color:$red;margin-top:4px}
+    .row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#F0F0F0;border-radius:10px;cursor:pointer;user-select:none}
+    .toggle-info strong{display:block;font-size:14px;color:$text}
+    .toggle-info span{font-size:12px;color:$muted}
+    .toggle-switch{width:44px;height:24px;background:$border;border-radius:12px;position:relative;transition:background .2s;flex-shrink:0}
+    .toggle-switch.on{background:$red}
+    .toggle-knob{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s}
+    .toggle-switch.on .toggle-knob{transform:translateX(20px)}
+    .doc-note{font-size:13px;color:$muted;margin-bottom:16px}
+    .upload-box{border:2px dashed $border;border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s}
+    .upload-box:hover{border-color:$red;background:$red-light}
+    .upload-box.has-file{border-color:#22c55e;background:#f0fdf4}
+    .upload-hint{font-size:13px;color:$muted;display:block;margin-top:8px}
+    .upload-hint small{display:block;margin-top:4px}
+    .upload-done{font-size:14px;color:#16a34a;font-weight:600}
+    .review-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid $border;font-size:14px}
+    .review-row:last-child{border-bottom:none}
+    .review-row span{color:$muted}
+    .review-row strong{color:$text}
+    .notice-box{display:flex;gap:10px;align-items:flex-start;background:#FAEEDA;border:1px solid #FAC775;border-radius:10px;padding:12px 14px;margin-bottom:16px}
+    .notice-box p{font-size:13px;color:#854F0B;line-height:1.5}
+    .btn-primary{width:100%;padding:14px;background:$red;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;font-family:'Cairo',sans-serif;cursor:pointer;margin-top:8px;transition:opacity .15s}
+    .btn-primary:disabled{opacity:0.55;cursor:not-allowed}
+    .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .auth-footer{text-align:center;font-size:14px;color:$muted;margin-top:20px}
+    .auth-footer a{color:$red;font-weight:600;text-decoration:none}

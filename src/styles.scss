@@ -1,0 +1,160 @@
+/* ── Wateen Global Styles ──────────────────────────────────────────────────── */
+
+/* Import Angular Material pre-built theme */
+@use '@angular/material' as mat;
+@include mat.core();
+
+/* ── Wateen custom palette (primary = red #D84040) ── */
+$wateen-primary: mat.define-palette((
+  50:  #fef2f2,
+  100: #fde8e8,
+  200: #fbd5d5,
+  300: #f8aeae,
+  400: #f27878,
+  500: #D84040,
+  600: #c43a3a,
+  700: #a83030,
+  800: #8c2828,
+  900: #6e1e1e,
+  contrast: (
+    500: white,
+    600: white,
+    700: white,
+  )
+), 500, 300, 700);
+
+$wateen-accent:  mat.define-palette(mat.$blue-palette, 600);
+$wateen-warn:    mat.define-palette(mat.$red-palette);
+
+$wateen-theme: mat.define-light-theme((
+  color: (
+    primary: $wateen-primary,
+    accent:  $wateen-accent,
+    warn:    $wateen-warn,
+  ),
+  typography: mat.define-typography-config(
+    $font-family: "'Cairo', sans-serif",
+  ),
+  density: 0,
+));
+
+@include mat.all-component-themes($wateen-theme);
+
+/* ── CSS variables ─────────────────────────────────────────────────────────── */
+:root {
+  --wateen-red:        #D84040;
+  --wateen-red-light:  #fef2f2;
+  --wateen-red-dark:   #a83030;
+  --wateen-bg:         #f8f8f8;
+  --wateen-surface:    #ffffff;
+  --wateen-border:     rgba(0, 0, 0, 0.08);
+  --wateen-text:       #111111;
+  --wateen-text-muted: #888888;
+  --font:              'Cairo', sans-serif;
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: var(--font);
+  font-size: 15px;
+  color: var(--wateen-text);
+  background: var(--wateen-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Typography ────────────────────────────────────────────────────────────── */
+h1 { font-size: 24px; font-weight: 700; }
+h2 { font-size: 20px; font-weight: 600; }
+h3 { font-size: 17px; font-weight: 600; }
+p  { line-height: 1.6; }
+a  { color: var(--wateen-red); text-decoration: none; }
+
+/* ── Wateen card ────────────────────────────────────────────────────────────── */
+.wateen-card {
+  background: var(--wateen-surface);
+  border-radius: 14px;
+  padding: 20px;
+  border: 0.5px solid var(--wateen-border);
+}
+
+/* ── Wateen button ──────────────────────────────────────────────────────────── */
+.btn-primary {
+  display: block;
+  width: 100%;
+  padding: 13px;
+  background: var(--wateen-red);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: opacity .15s;
+
+  &:disabled { opacity: 0.55; cursor: not-allowed; }
+  &:hover:not(:disabled) { opacity: 0.9; }
+}
+
+.btn-outline {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  color: var(--wateen-red);
+  border: 1.5px solid var(--wateen-red);
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+}
+
+/* ── Form inputs ────────────────────────────────────────────────────────────── */
+.form-input {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid #e5e5e5;
+  border-radius: 10px;
+  font-size: 14px;
+  font-family: var(--font);
+  outline: none;
+  transition: border-color .15s;
+  background: #fff;
+
+  &:focus { border-color: var(--wateen-red); }
+  &::placeholder { color: #bbb; }
+}
+
+/* ── Status badges ──────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+
+  &.pending   { background: #fef9e7; color: #d4a017; }
+  &.confirmed { background: #e1f5ee; color: #0f6e56; }
+  &.cancelled { background: #fef2f2; color: #D84040; }
+  &.completed { background: #e6f1fb; color: #185fa5; }
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+
+/* ── Router outlet ──────────────────────────────────────────────────────────── */
+router-outlet + * { display: block; }
+
+/* ── Error message ──────────────────────────────────────────────────────────── */
+.error-msg {
+  color: var(--wateen-red);
+  font-size: 13px;
+  text-align: center;
+  margin-top: 4px;
+}

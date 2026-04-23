@@ -47,6 +47,7 @@ export interface DoctorProfile extends UserProfile {
   licenseNumber: string; bio: string | null; rating: number;
   reviewCount: number; yearsExperience: number;
   profileCompleted: boolean; calendlyEventUrl: string | null;
+   consultationFee?: number;
 }
 
 export interface ProviderProfile extends UserProfile {

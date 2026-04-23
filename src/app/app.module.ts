@@ -6,22 +6,27 @@ import { HttpClientModule,
 
 import { AppRoutingModule }  from './app-routing.module';
 import { AppComponent }      from './app.component';
-import { JwtInterceptor }    from './core/interceptors/jwt.interceptor';
+
+// ── MOCK MODE: use MockInterceptor until backend is ready ─────────────────────
+import { MockInterceptor }   from './core/interceptors/mock.interceptor';
+
+// ── REAL MODE: uncomment this + comment out MockInterceptor above ─────────────
+// import { JwtInterceptor } from './core/interceptors/jwt.interceptor';
 
 @NgModule({
   declarations: [AppComponent],
   imports: [
     BrowserModule,
-    BrowserAnimationsModule,  // Required by Angular Material
+    BrowserAnimationsModule,
     HttpClientModule,
     AppRoutingModule,
   ],
   providers: [
-    {
-      provide:  HTTP_INTERCEPTORS,
-      useClass: JwtInterceptor,
-      multi:    true,           // Stacks with any other interceptors
-    },
+    // ── MOCK MODE ──────────────────────────────────────────────────────────
+    { provide: HTTP_INTERCEPTORS, useClass: MockInterceptor, multi: true },
+
+    // ── REAL MODE (uncomment when backend is ready) ────────────────────────
+    // { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },
   ],
   bootstrap: [AppComponent],
 })

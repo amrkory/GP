@@ -76,7 +76,7 @@ interface Provider {
         </div>
 
         <div class="empty" *ngIf="providers().length === 0">
-          <div class="empty-icon">🏥</div>
+          <div class="empty-icon-wrap"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 16h.42Z"/></svg></div>
           <p>No providers available for this service right now.</p>
           <button class="btn-back" (click)="router.navigate(['/patient/home-service'])">
             Go Back
@@ -87,7 +87,7 @@ interface Provider {
       <!-- Success message -->
       <div class="success-overlay" *ngIf="booked()">
         <div class="success-card">
-          <div class="success-icon">✅</div>
+          <div class="success-icon"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
           <h2>Request Sent!</h2>
           <p>{{ bookedName }} will be notified and contact you shortly.</p>
           <button class="btn-done" (click)="router.navigate(['/patient/home-service'])">
@@ -162,7 +162,7 @@ interface Provider {
 
     /* Empty state */
     .empty       { text-align:center; padding:40px 20px; background:#fff; border-radius:14px; }
-    .empty-icon  { font-size:48px; margin-bottom:12px; }
+    .empty-icon-wrap { width:72px; height:72px; background:#f0f0f0; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
     .empty p     { color:#888; font-size:15px; margin-bottom:16px; }
     .btn-back    {
       background:#D84040; color:#fff; border:none;
@@ -180,7 +180,7 @@ interface Provider {
       background:#fff; border-radius:20px; padding:32px 24px;
       text-align:center; width:100%; max-width:360px;
     }
-    .success-icon { font-size:52px; margin-bottom:12px; }
+    .success-icon { width:72px; height:72px; background:#E1F5EE; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
     .success-card h2 { font-size:20px; font-weight:700; color:#111; margin-bottom:8px; }
     .success-card p  { font-size:14px; color:#888; line-height:1.6; margin-bottom:20px; }
     .btn-done {

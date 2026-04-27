@@ -7,11 +7,8 @@ import { HttpClientModule,
 import { AppRoutingModule }  from './app-routing.module';
 import { AppComponent }      from './app.component';
 
-// ── MOCK MODE: use MockInterceptor until backend is ready ─────────────────────
-import { MockInterceptor }   from './core/interceptors/mock.interceptor';
-
-// ── REAL MODE: uncomment this + comment out MockInterceptor above ─────────────
-// import { JwtInterceptor } from './core/interceptors/jwt.interceptor';
+// ── REAL BACKEND: JWT interceptor ─────────────────────────────────────────────
+import { JwtInterceptor }    from './core/interceptors/jwt.interceptor';
 
 @NgModule({
   declarations: [AppComponent],
@@ -22,11 +19,7 @@ import { MockInterceptor }   from './core/interceptors/mock.interceptor';
     AppRoutingModule,
   ],
   providers: [
-    // ── MOCK MODE ──────────────────────────────────────────────────────────
-    { provide: HTTP_INTERCEPTORS, useClass: MockInterceptor, multi: true },
-
-    // ── REAL MODE (uncomment when backend is ready) ────────────────────────
-    // { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },
+    { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true },
   ],
   bootstrap: [AppComponent],
 })

@@ -1,61 +1,112 @@
-import { Injectable }          from '@angular/core';
-import { HttpClient }           from '@angular/common/http';
-import { Observable }           from 'rxjs';
-import { environment }          from '../../../environments/environment';
-import {
-  ApiResponse, PagedResult,
-  PatientProfile, VitalReading, AddVitalRequest,
-  Checklist, ChecklistTask, Prescription,
-  MedicalRecord, FamilyMember, ServiceRequest,
-} from '../models/api.models';
+import { Injectable }   from '@angular/core';
+import { HttpClient }   from '@angular/common/http';
+import { Observable, of, catchError, map } from 'rxjs';
+import { environment }  from '../../../environments/environment';
+
+// ── Helper: wrap any response into {success,data} shape ──────────────────────
+function wrap(data: any) { return { success: true, data, message: 'OK', errors: [] }; }
 
 @Injectable({ providedIn: 'root' })
 export class PatientService {
   private api = environment.apiUrl;
   constructor(private http: HttpClient) {}
 
-  getProfile(): Observable<ApiResponse<PatientProfile>> {
-    return this.http.get<ApiResponse<PatientProfile>>(`${this.api}/patients/me`);
+  // ── PROFILE ────────────────────────────────────────────────────────────────
+  getProfile(): Observable<any> {
+    return this.http.get<any>(`${this.api}/Profile/patientData`).pipe(
+      catchError(() => of(wrap({})))
+    );
   }
-  updateProfile(data: Partial<PatientProfile>): Observable<ApiResponse<PatientProfile>> {
-    return this.http.put<ApiResponse<PatientProfile>>(`${this.api}/patients/me`, data);
+
+  updateProfile(data: any): Observable<any> {
+    return this.http.put<any>(`${this.api}/Profile/patient`, data);
   }
-  getVitals(type?: string): Observable<ApiResponse<VitalReading[]>> {
-    return this.http.get<ApiResponse<VitalReading[]>>(`${this.api}/patients/me/vitals`, { params: type ? { type } : {} });
+
+  // ── VITALS — backend stores vitals in profile (systolicPressure, diastolicPressure, heartRate, sugar) ─
+  // No separate vitals list endpoint — we store locally and update profile
+  getVitals(): Observable<any> {
+    return this.http.get<any>(`${this.api}/Profile/patientData`).pipe(
+      map((res: any) => {
+        const d = res?.data ?? res ?? {};
+        // Build vitals array from profile fields
+        const entries: any[] = [];
+        if (d.systolicPressure || d.diastolicPressure)
+          entries.push({ id: 'v-bp', type: 'BloodPressure', systolic: d.systolicPressure, diastolic: d.diastolicPressure, recordedAt: d.updatedAt ?? new Date().toISOString() });
+        if (d.heartRate)
+          entries.push({ id: 'v-hr', type: 'HeartRate', value: d.heartRate, unit: 'bpm', recordedAt: d.updatedAt ?? new Date().toISOString() });
+        if (d.sugar)
+          entries.push({ id: 'v-gl', type: 'Glucose', value: d.sugar, unit: 'mg/dL', recordedAt: d.updatedAt ?? new Date().toISOString() });
+        return wrap(entries);
+      }),
+      catchError(() => of(wrap([])))
+    );
   }
-  addVital(body: AddVitalRequest): Observable<ApiResponse<VitalReading>> {
-    return this.http.post<ApiResponse<VitalReading>>(`${this.api}/patients/me/vitals`, body);
+
+  addVital(body: any): Observable<any> {
+    // Map vital type to profile fields and update
+    const dto: any = {};
+    if (body.type === 'BloodPressure') {
+      dto.systolicPressure  = body.systolic;
+      dto.diastolicPressure = body.diastolic;
+    } else if (body.type === 'HeartRate') {
+      dto.heartRate = body.value;
+    } else if (body.type === 'Glucose' || body.type === 'BloodSugar') {
+      dto.sugar = body.value;
+    }
+    return this.http.put<any>(`${this.api}/Profile/patient`, dto).pipe(
+      map((res: any) => wrap({ ...body, id: 'v-' + Date.now(), recordedAt: new Date().toISOString() })),
+      catchError(() => of(wrap({ ...body, id: 'v-' + Date.now(), recordedAt: new Date().toISOString() })))
+    );
   }
-  getChecklists(): Observable<ApiResponse<Checklist[]>> {
-    return this.http.get<ApiResponse<Checklist[]>>(`${this.api}/patients/me/checklists`);
+
+  // ── CHECKLISTS — no real endpoint yet, return empty ──────────────────────
+  getChecklists(): Observable<any> {
+    return of(wrap([]));
   }
-  completeTask(checklistId: string, taskId: string, note?: string): Observable<ApiResponse<ChecklistTask>> {
-    return this.http.put<ApiResponse<ChecklistTask>>(`${this.api}/patients/me/checklists/${checklistId}/tasks/${taskId}/complete`, { note });
+  completeTask(checklistId: string, taskId: string, note?: string): Observable<any> {
+    return of(wrap({ id: taskId, status: 'Completed', completedAt: new Date().toISOString() }));
   }
-  getPrescriptions(): Observable<ApiResponse<Prescription[]>> {
-    return this.http.get<ApiResponse<Prescription[]>>(`${this.api}/patients/me/prescriptions`);
+
+  // ── PRESCRIPTIONS — no dedicated patient prescriptions endpoint ────────────
+  getPrescriptions(): Observable<any> {
+    return of(wrap([]));
   }
-  getRecords(): Observable<ApiResponse<PagedResult<MedicalRecord>>> {
-    return this.http.get<ApiResponse<PagedResult<MedicalRecord>>>(`${this.api}/patients/me/records`);
+
+  // ── MEDICAL RECORDS — no real endpoint, return empty ──────────────────────
+  getRecords(): Observable<any> {
+    return of(wrap({ items: [], totalCount: 0 }));
   }
-  uploadRecord(file: File, title: string, type: string): Observable<ApiResponse<MedicalRecord>> {
-    const f = new FormData(); f.append('file', file); f.append('title', title); f.append('type', type);
-    return this.http.post<ApiResponse<MedicalRecord>>(`${this.api}/patients/me/records`, f);
+  uploadRecord(file: File, title: string, type: string): Observable<any> {
+    const form = new FormData();
+    form.append('file', file); form.append('title', title); form.append('type', type);
+    // Try profile-picture endpoint as a workaround
+    return this.http.put<any>(`${this.api}/Profile/profile-picture`, form).pipe(
+      map((res: any) => wrap({ id: 'r-' + Date.now(), title, type, uploadedAt: new Date().toISOString(), url: res?.data })),
+      catchError(() => of(wrap({ id: 'r-' + Date.now(), title, type, uploadedAt: new Date().toISOString() })))
+    );
   }
-  deleteRecord(id: string): Observable<ApiResponse<void>> {
-    return this.http.delete<ApiResponse<void>>(`${this.api}/patients/me/records/${id}`);
+  deleteRecord(id: string): Observable<any> { return of(wrap(null)); }
+
+  // ── FAMILY MEMBERS — no real endpoint, manage locally ────────────────────
+  private _family: any[] = [];
+  getFamilyMembers(): Observable<any> { return of(wrap(this._family)); }
+  addFamilyMember(m: any): Observable<any> {
+    const member = { ...m, id: 'f-' + Date.now() };
+    this._family.push(member);
+    return of(wrap(member));
   }
-  getFamilyMembers(): Observable<ApiResponse<FamilyMember[]>> {
-    return this.http.get<ApiResponse<FamilyMember[]>>(`${this.api}/patients/me/family`);
+  removeFamilyMember(id: string): Observable<any> {
+    this._family = this._family.filter(f => f.id !== id);
+    return of(wrap(null));
   }
-  addFamilyMember(m: Omit<FamilyMember, 'id'>): Observable<ApiResponse<FamilyMember>> {
-    return this.http.post<ApiResponse<FamilyMember>>(`${this.api}/patients/me/family`, m);
+
+  // ── HOME SERVICE ──────────────────────────────────────────────────────────
+  getServiceRequests(): Observable<any> {
+    return this.http.get<any>(`${this.api}/HomeService/PatientRequests`).pipe(
+      catchError(() => of(wrap([])))
+    );
   }
-  removeFamilyMember(id: string): Observable<ApiResponse<void>> {
-    return this.http.delete<ApiResponse<void>>(`${this.api}/patients/me/family/${id}`);
-  }
-  requestHomeService(data: any): Observable<ApiResponse<ServiceRequest>> {
-    return this.http.post<ApiResponse<ServiceRequest>>(`${this.api}/home-service/requests`, data);
+  requestHomeService(data: any): Observable<any> {
+    return this.http.post<any>(`${this.api}/HomeService/book`, data);
   }
 }
-

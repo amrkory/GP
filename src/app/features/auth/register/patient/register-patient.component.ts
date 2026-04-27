@@ -177,7 +177,47 @@ function matchPasswords(ctrl: AbstractControl) {
       </div>
     </div>
   `,
-styleUrls: ['./register-patient.component.scss'],
+  styles: [`
+    
+    .auth-page{min-height:100vh;background:#F7F8FA;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+    .auth-card{background:#fff;border-radius:20px;padding:36px 28px;width:100%;max-width:520px;box-shadow:0 4px 32px rgba(0,0,0,0.07)}
+    .back-btn{display:flex;align-items:center;gap:6px;background:none;border:none;color:#888;font-size:14px;cursor:pointer;padding:0;margin-bottom:20px;font-family:'Cairo',sans-serif}
+    .auth-title{font-size:24px;font-weight:700;color:#111;margin-bottom:6px}
+    .auth-sub{font-size:14px;color:#888;margin-bottom:24px}
+    .alert-error{background:#D84040-light;border:1px solid #FBDCDC;color:#B83030;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:16px}
+    .form-section{background:#FAFAFA;border:1px solid #E8E8E8;border-radius:14px;padding:20px;margin-bottom:16px}
+    .form-section h3{font-size:15px;font-weight:700;color:#111;margin-bottom:16px}
+    .field{margin-bottom:14px}
+    .field label{display:block;font-size:13px;font-weight:600;color:#111;margin-bottom:6px}
+    .req{color:#D84040}
+    .input-wrap{position:relative}
+    .input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#bbb;display:flex;pointer-events:none}
+    .eye-btn{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#bbb;padding:0;display:flex}
+    .input-wrap input,.input-wrap select{width:100%;padding:11px 14px 11px 42px;border:1.5px solid #E8E8E8;border-radius:10px;font-size:14px;font-family:'Cairo',sans-serif;color:#111;background:#fff;outline:none;transition:border-color .2s;box-sizing:border-box;appearance:none}
+    .input-wrap input::placeholder{color:#c0c0c0}
+    .input-wrap input:focus,.input-wrap select:focus{border-color:#D84040;box-shadow:0 0 0 3px rgba(216,64,64,0.08)}
+    .input-wrap.invalid input,.input-wrap.invalid select{border-color:#D84040}
+    .field-error{font-size:12px;color:#D84040;margin-top:4px}
+    .row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .strength-bar{height:4px;border-radius:4px;margin-top:6px;transition:all .3s}
+    .strength-bar.weak{background:#ef4444;width:33%}
+    .strength-bar.medium{background:#f59e0b;width:66%}
+    .strength-bar.strong{background:#22c55e;width:100%}
+    .strength-label{font-size:11px;margin-top:3px}
+    .strength-label.weak{color:#ef4444}
+    .strength-label.medium{color:#f59e0b}
+    .strength-label.strong{color:#22c55e}
+    .terms-section{padding:14px 20px}
+    .terms-check{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#888;cursor:pointer;line-height:1.5}
+    .terms-check input{margin-top:2px;accent-color:#D84040;flex-shrink:0}
+    .terms-check a{color:#D84040;font-weight:600}
+    .btn-primary{width:100%;padding:14px;background:#D84040;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;font-family:'Cairo',sans-serif;cursor:pointer;margin-top:8px;transition:opacity .15s}
+    .btn-primary:disabled{opacity:0.55;cursor:not-allowed}
+    .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .auth-footer{text-align:center;font-size:14px;color:#888;margin-top:20px}
+    .auth-footer a{color:#D84040;font-weight:600;text-decoration:none}
+  `],
 })
 export class RegisterPatientComponent {
   private fb     = inject(FormBuilder);
@@ -241,14 +281,18 @@ export class RegisterPatientComponent {
     this.loading.set(true);
     this.errorMsg.set('');
     const v = this.form.value;
-    const body = {
-      fullName: v.fullName, email: v.email, password: v.password,
-      phone: v.phone, dateOfBirth: v.dateOfBirth, gender: v.gender,
-      nationalId: v.nationalId, bloodType: v.bloodType,
-      emergencyContact: { name: v.emergencyName, phone: v.emergencyPhone },
-      role: 'Patient',
+    // Map to real API fields: RegisterPatientRequestDto
+    const body: any = {
+      firstName:       v.fullName?.split(' ')[0] ?? v.fullName,
+      lastName:        v.fullName?.split(' ').slice(1).join(' ') || v.fullName,
+      email:           v.email,
+      password:        v.password,
+      confirmPassword: v.confirmPassword,
+      phoneNumber:     v.phone,
+      gender:          v.gender || undefined,
+      dateOfBirth:     v.dateOfBirth ? new Date(v.dateOfBirth).toISOString() : undefined,
     };
-    this.http.post<any>(`${environment.apiUrl}/auth/register`, body).subscribe({
+    this.http.post<any>(`${environment.apiUrl}/Auth/register/Patient`, body).subscribe({
       next: () => this.router.navigate(['/auth/login'], { queryParams: { registered: true } }),
       error: (err) => {
         this.loading.set(false);

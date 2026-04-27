@@ -16,7 +16,7 @@ import { Prescription }                        from '../../../core/models/api.mo
       <ng-container *ngIf="!loading()">
         <div class="rx-card" *ngFor="let rx of prescriptions()" [class.expired]="isExpired(rx)">
           <div class="rx-header">
-            <div class="rx-icon">💊</div>
+            <div class="rx-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D84040" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></div>
             <div class="rx-info">
               <div class="rx-diagnosis">{{ rx.diagnosis }}</div>
               <div class="rx-doctor">{{ rx.doctorName }}</div>
@@ -30,7 +30,7 @@ import { Prescription }                        from '../../../core/models/api.mo
           <!-- Medicines -->
           <div class="medicine-list">
             <div class="med-item" *ngFor="let m of rx.medicines">
-              <div class="med-dot"></div>
+              <div class="med-dot" style="width:8px;height:8px;border-radius:50%;background:#D84040;flex-shrink:0;margin-top:5px"></div>
               <div class="med-info">
                 <div class="med-name">{{ m.name }} <span class="med-dosage">{{ m.dosage }}</span></div>
                 <div class="med-details">{{ m.frequency }} · {{ m.duration }}</div>
@@ -50,14 +50,15 @@ import { Prescription }                        from '../../../core/models/api.mo
         </div>
 
         <div class="empty" *ngIf="prescriptions().length === 0">
-          <div class="empty-icon">💊</div>
+          <div class="empty-icon-wrap"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg></div>
           <p>No prescriptions yet</p>
         </div>
       </ng-container>
     </div>
   `,
   styles: [`
-    .page { padding:16px; max-width:640px; margin:0 auto; }
+    .page { padding:24px; max-width:900px; }
+    @media (max-width:768px) { .page { padding:16px; } }
     .page-header h1 { font-size:22px; font-weight:700; color:#111; margin-bottom:16px; }
     .loading { display:flex; justify-content:center; padding:40px; }
     .spinner-lg { width:32px; height:32px; border:3px solid #f0f0f0; border-top-color:#D84040; border-radius:50%; animation:spin .7s linear infinite; }
@@ -88,7 +89,7 @@ import { Prescription }                        from '../../../core/models/api.mo
     .rx-valid    { font-size:12px; color:#888; padding:0 16px 14px; }
 
     .empty { text-align:center; padding:40px 20px; background:#fff; border-radius:14px; }
-    .empty-icon { font-size:48px; margin-bottom:12px; }
+    .empty-icon-wrap { width:72px; height:72px; background:#f0f0f0; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
     .empty p    { color:#888; font-size:15px; }
   `],
 })
@@ -98,7 +99,7 @@ export class PrescriptionsComponent implements OnInit {
   prescriptions = signal<Prescription[]>([]);
 
   ngOnInit(): void {
-    this.svc.getPrescriptions().subscribe(res => { this.prescriptions.set(res.data); this.loading.set(false); });
+    this.svc.getPrescriptions().subscribe((res: any) => { this.prescriptions.set(res.data); this.loading.set(false); });
   }
 
   isExpired(rx: Prescription): boolean {

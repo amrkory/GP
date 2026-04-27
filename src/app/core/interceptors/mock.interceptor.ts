@@ -150,12 +150,11 @@ const FAKE = {
 
   // ── Home service requests ──────────────────────────────────────────────────
   serviceRequests: [
-    {
-      id: 'sr-001', patientId: 'p-001', patientName: 'Ahmed Ali',
-      patientAddress: '15 Tahrir St, Cairo', serviceType: 'Nursing',
-      scheduledAt: '2026-04-25T09:00:00', status: 'Accepted',
-      notes: 'Daily dressing change', providerId: 'prov-001', providerName: 'Fatma Mohamed',
-    },
+    { id:'sr-001', patientId:'p-001', patientName:'Ahmed Ali',    patientPhone:'01554258827', patientAddress:'15 Tahrir St, Cairo',    serviceType:'Nursing',       scheduledAt:'2026-04-25T09:00:00', status:'Pending',   notes:'Daily dressing change for wound on left leg.',   providerId:null, providerName:null },
+    { id:'sr-002', patientId:'p-002', patientName:'Nadia Samir',  patientPhone:'01234567890', patientAddress:'7 Zamalek, Cairo',        serviceType:'Nursing',       scheduledAt:'2026-04-25T11:00:00', status:'Accepted',  notes:'Post-surgery wound care and IV antibiotics.',    providerId:'prov-001', providerName:'Fatma Mohamed' },
+    { id:'sr-003', patientId:'p-003', patientName:'Tarek Fouad',  patientPhone:'01099887766', patientAddress:'22 Heliopolis, Cairo',    serviceType:'Physiotherapy', scheduledAt:'2026-04-26T10:00:00', status:'Pending',   notes:'Knee rehabilitation after surgery.',             providerId:null, providerName:null },
+    { id:'sr-004', patientId:'p-004', patientName:'Heba Kamal',   patientPhone:'01155443322', patientAddress:'5 Maadi St, Cairo',       serviceType:'Nursing',       scheduledAt:'2026-04-24T08:00:00', status:'Completed', notes:'Blood pressure monitoring and medication.',       providerId:'prov-001', providerName:'Fatma Mohamed' },
+    { id:'sr-005', patientId:'p-001', patientName:'Ahmed Ali',    patientPhone:'01554258827', patientAddress:'15 Tahrir St, Cairo',    serviceType:'LabTechnician', scheduledAt:'2026-04-27T09:30:00', status:'Rejected',  notes:'Blood glucose test and CBC.',                    providerId:null, providerName:null },
   ],
 
   // ── Notifications ──────────────────────────────────────────────────────────
@@ -187,19 +186,36 @@ const FAKE = {
   ],
 };
 
-// ── URL matching helpers ──────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function match(url: string, ...patterns: string[]): boolean {
-  return patterns.some(p => url.includes(p));
+  return patterns.every(p => url.includes(p));
 }
 
-function ok(data: any, delay_ms = 400): Observable<HttpResponse<any>> {
+function extractId(url: string, prefix: string): string {
+  const idx = url.lastIndexOf(prefix);
+  if (idx < 0) return '';
+  return url.slice(idx + prefix.length).split('/')[0];
+}
+
+// Mutate item in array by id, return updated item
+function updateById<T extends { id: string }>(arr: T[], id: string, patch: Partial<T>): T {
+  const idx = arr.findIndex(x => x.id === id);
+  if (idx >= 0) {
+    arr[idx] = { ...arr[idx], ...patch } as T;
+    return arr[idx];
+  }
+  // fallback: return first with patch applied
+  return { ...arr[0], ...patch } as T;
+}
+
+function ok(data: any, status = 200): Observable<HttpResponse<any>> {
   return of(new HttpResponse({
-    status: 200,
+    status,
     body: { success: true, data, message: 'OK', errors: [] },
-  })).pipe(delay(delay_ms));
+  })).pipe(delay(300));
 }
 
-function paged(items: any[], delay_ms = 400): Observable<HttpResponse<any>> {
+function paged(items: any[]): Observable<HttpResponse<any>> {
   return of(new HttpResponse({
     status: 200,
     body: {
@@ -207,9 +223,10 @@ function paged(items: any[], delay_ms = 400): Observable<HttpResponse<any>> {
       data: { items, totalCount: items.length, pageNumber: 1, pageSize: 50, totalPages: 1 },
       message: 'OK', errors: [],
     },
-  })).pipe(delay(delay_ms));
+  })).pipe(delay(350));
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
 @Injectable()
 export class MockInterceptor implements HttpInterceptor {
 
@@ -217,83 +234,175 @@ export class MockInterceptor implements HttpInterceptor {
     const url    = req.url;
     const method = req.method;
 
-    // ── Skip auth endpoints (handled by MockAuthService) ──────────────────
     if (match(url, '/auth/')) return next.handle(req);
 
-    // ── PATIENT endpoints ─────────────────────────────────────────────────
-    if (match(url, '/patients/me/vitals'))      return method === 'POST' ? ok({ ...req.body, id: 'v-new', recordedAt: new Date().toISOString() }) : ok(FAKE.vitals);
-    if (match(url, '/patients/me/checklists'))  return ok(FAKE.checklists);
+    // ── PATIENT ───────────────────────────────────────────────────────────
+    if (match(url, '/patients/me/vitals')) {
+      if (method === 'POST') {
+        const v = { ...req.body, id: 'v-' + Date.now(), recordedAt: new Date().toISOString() };
+        FAKE.vitals.unshift(v); return ok(v);
+      }
+      return ok(FAKE.vitals);
+    }
+    // Complete a specific task: PUT /patients/me/checklists/:clId/tasks/:taskId/complete
+    if (match(url, '/patients/me/checklists/') && match(url, '/tasks/') && match(url, '/complete')) {
+      const parts = url.split('/');
+      const taskId = parts[parts.indexOf('tasks') + 1];
+      let foundTask: any = null;
+      for (const cl of FAKE.checklists) {
+        const task = cl.tasks.find((t: any) => t.id === taskId);
+        if (task) {
+          task.status = 'Completed';
+          task.completedAt = new Date().toISOString();
+          task.note = req.body?.note ?? null;
+          const done = cl.tasks.filter((t: any) => t.status === 'Completed').length;
+          cl.adherence = Math.round((done / cl.tasks.length) * 100);
+          foundTask = task;
+          break;
+        }
+      }
+      return ok(foundTask ?? { status: 'Completed' });
+    }
+
+    if (match(url, '/patients/me/checklists')) {
+      // POST = complete a task
+      if (method === 'POST' && req.body?.taskId) {
+        for (const cl of FAKE.checklists) {
+          const task = cl.tasks.find((t: any) => t.id === req.body.taskId);
+          if (task) {
+            task.status = 'Completed';
+            task.completedAt = new Date().toISOString();
+            // recalculate adherence
+            const done = cl.tasks.filter((t: any) => t.status === 'Completed').length;
+            cl.adherence = Math.round((done / cl.tasks.length) * 100);
+            return ok(task);
+          }
+        }
+      }
+      return ok(FAKE.checklists);
+    }
     if (match(url, '/patients/me/prescriptions')) return ok(FAKE.prescriptions);
-    if (match(url, '/patients/me/records'))     return paged(FAKE.records);
-    if (match(url, '/patients/me/family'))      return method === 'POST' ? ok({ ...req.body, id: 'f-new' }) : ok(FAKE.family);
-    if (match(url, '/patients/me'))             return method === 'PUT'  ? ok({ ...FAKE.patientProfile, ...req.body }) : ok(FAKE.patientProfile);
+    if (match(url, '/patients/me/records')) {
+      if (method === 'POST') {
+        const r = { ...req.body, id: 'r-' + Date.now(), uploadedAt: new Date().toISOString() };
+        FAKE.records.unshift(r); return ok(r);
+      }
+      return paged(FAKE.records);
+    }
+    if (match(url, '/patients/me/family')) {
+      if (method === 'POST') { const f = { ...req.body, id: 'f-' + Date.now() }; FAKE.family.push(f); return ok(f); }
+      if (method === 'DELETE') { const id = extractId(url, '/family/'); FAKE.family = FAKE.family.filter((x: any) => x.id !== id); return ok(null); }
+      return ok(FAKE.family);
+    }
+    if (match(url, '/patients/me')) {
+      if (method === 'PUT') Object.assign(FAKE.patientProfile, req.body);
+      return ok(FAKE.patientProfile);
+    }
 
-    // ── HOME SERVICE endpoints ────────────────────────────────────────────
-    if (match(url, '/home-service/requests'))   return method === 'POST' ? ok({ ...req.body, id: 'sr-new', status: 'Pending' }) : ok(FAKE.serviceRequests);
-
-    // ── DOCTOR endpoints ──────────────────────────────────────────────────
+    // ── DOCTOR ────────────────────────────────────────────────────────────
     if (match(url, '/doctors/') && match(url, '/slots')) return ok(FAKE.slots);
-    if (match(url, '/doctors'))                 return paged(FAKE.doctors);
-    if (match(url, '/doctor/profile'))          return method === 'PUT' ? ok({ ...FAKE.doctorProfile, ...req.body }) : ok(FAKE.doctorProfile);
-    if (match(url, '/doctor/patients/') && match(url, '/vitals'))       return ok(FAKE.vitals);
+    if (match(url, '/doctors'))  return paged(FAKE.doctors);
+    if (match(url, '/doctor/profile')) {
+      if (method === 'PUT') Object.assign(FAKE.doctorProfile, req.body);
+      return ok(FAKE.doctorProfile);
+    }
+    if (match(url, '/doctor/patients/') && match(url, '/vitals'))        return ok(FAKE.vitals);
     if (match(url, '/doctor/patients/') && match(url, '/prescriptions')) return ok(FAKE.prescriptions);
-    if (match(url, '/doctor/patients/') && match(url, '/checklists'))   return ok(FAKE.checklists);
-    if (match(url, '/doctor/patients/'))        return ok(FAKE.doctorPatients[0]);
-    if (match(url, '/doctor/patients'))         return paged(FAKE.doctorPatients);
-    if (match(url, '/doctor/prescriptions'))    return ok({ ...req.body, id: 'rx-new', issuedAt: new Date().toISOString() });
-    if (match(url, '/doctor/checklists'))       return ok({ ...req.body, id: 'cl-new', createdAt: new Date().toISOString() });
-    if (match(url, '/doctor/appointments'))     return ok(FAKE.appointments);
-    if (match(url, '/doctor/schedule'))         return ok({ calendlyEventUrl: 'https://calendly.com/mock' });
+    if (match(url, '/doctor/patients/') && match(url, '/checklists'))    return ok(FAKE.checklists);
+    if (match(url, '/doctor/patients/'))  return ok(FAKE.doctorPatients.find((p: any) => url.includes(p.id)) ?? FAKE.doctorPatients[0]);
+    if (match(url, '/doctor/patients'))   return paged(FAKE.doctorPatients);
+    if (match(url, '/doctor/prescriptions')) { const rx = { ...req.body, id: 'rx-' + Date.now(), issuedAt: new Date().toISOString() }; FAKE.prescriptions.unshift(rx); return ok(rx); }
+    if (match(url, '/doctor/checklists'))    { const cl = { ...req.body, id: 'cl-' + Date.now(), createdAt: new Date().toISOString() }; FAKE.checklists.push(cl); return ok(cl); }
+    if (match(url, '/doctor/appointments'))  return ok(FAKE.appointments);
+    if (match(url, '/doctor/schedule'))      return ok({ calendlyEventUrl: 'https://calendly.com/mock' });
+
+    // ── PRESCRIPTIONS ─────────────────────────────────────────────────────
+    if (match(url, '/prescriptions/') && method === 'PUT') {
+      const id = extractId(url, '/prescriptions/');
+      return ok(updateById(FAKE.prescriptions, id, req.body));
+    }
+    if (match(url, '/prescriptions/')) {
+      return ok(FAKE.prescriptions.find((r: any) => url.includes(r.id)) ?? FAKE.prescriptions[0]);
+    }
 
     // ── APPOINTMENTS ──────────────────────────────────────────────────────
-    if (match(url, '/appointments') && method === 'POST') return ok({ ...req.body, id: 'a-new', status: 'Confirmed', meetingLink: null });
-    if (match(url, '/appointments/') && match(url, '/cancel'))     return ok({ ...FAKE.appointments[0], status: 'Cancelled' });
-    if (match(url, '/appointments/') && match(url, '/reschedule')) return ok({ ...FAKE.appointments[0], status: 'Rescheduled' });
-    if (match(url, '/appointments/'))           return ok(FAKE.appointments[0]);
-    if (match(url, '/appointments'))            return ok(FAKE.appointments);
+    if (match(url, '/appointments') && method === 'POST') {
+      const a = { ...req.body, id: 'a-' + Date.now(), status: 'Confirmed', meetingLink: null };
+      FAKE.appointments.push(a); return ok(a);
+    }
+    if (match(url, '/appointments/') && match(url, '/confirm')) {
+      const id = extractId(url, '/appointments/');
+      return ok(updateById(FAKE.appointments, id, { status: 'Confirmed' }));
+    }
+    if (match(url, '/appointments/') && match(url, '/cancel')) {
+      const id = extractId(url, '/appointments/');
+      return ok(updateById(FAKE.appointments, id, { status: 'Cancelled', cancellationReason: req.body?.reason ?? 'Cancelled' }));
+    }
+    if (match(url, '/appointments/') && match(url, '/reschedule')) {
+      const id = extractId(url, '/appointments/');
+      return ok(updateById(FAKE.appointments, id, { status: 'Rescheduled', scheduledAt: req.body?.scheduledAt }));
+    }
+    if (match(url, '/appointments/')) {
+      return ok(FAKE.appointments.find((a: any) => url.includes(a.id)) ?? FAKE.appointments[0]);
+    }
+    if (match(url, '/appointments')) return ok(FAKE.appointments);
 
     // ── NOTIFICATIONS ─────────────────────────────────────────────────────
     if (match(url, '/notifications') && match(url, '/read-all')) return ok(null, 200);
-    if (match(url, '/notifications/') && method === 'PUT')       return ok(null, 200);
-    if (match(url, '/notifications'))           return paged(FAKE.notifications);
+    if (match(url, '/notifications/') && method === 'PUT')        return ok(null, 200);
+    if (match(url, '/notifications'))  return paged(FAKE.notifications);
 
-    // ── AI endpoints ──────────────────────────────────────────────────────
-    if (match(url, '/ai/chat'))             return ok({ reply: 'Based on your symptoms, I recommend consulting a cardiologist. Please note this is not a medical diagnosis.', conversationId: 'conv-001', disclaimer: 'This AI is for guidance only.' });
-    if (match(url, '/ai/food-recognize'))   return ok({ topPredictions: [{ label: 'Koshary', confidence: 0.92, calories: 480 }, { label: 'Ful', confidence: 0.05, calories: 200 }], totalCalories: 480, nutritionAdvice: 'Koshary is high in carbohydrates. Consider smaller portions.' });
-    if (match(url, '/ai/symptom-check'))    return ok({ possibleConditions: [{ name: 'Common Cold', probability: 0.75 }, { name: 'Flu', probability: 0.20 }], recommendedSpecialty: 'General Practitioner', urgencyLevel: 'Low', disclaimer: 'AI guidance only — not a substitute for medical advice.' });
+    // ── AI ────────────────────────────────────────────────────────────────
+    if (match(url, '/ai/chat'))           return ok({ reply: 'Based on your symptoms, I recommend consulting a specialist. This is not a medical diagnosis.', conversationId: 'conv-001', disclaimer: 'AI guidance only.' });
+    if (match(url, '/ai/food-recognize')) return ok({ topPredictions: [{ label: 'Koshary', confidence: 0.92, calories: 480 }, { label: 'Ful', confidence: 0.05, calories: 200 }], totalCalories: 480, nutritionAdvice: 'Koshary is high in carbohydrates. Consider smaller portions.' });
+    if (match(url, '/ai/symptom-check'))  return ok({ possibleConditions: [{ name: 'Common Cold', probability: 0.75 }, { name: 'Flu', probability: 0.20 }], recommendedSpecialty: 'General Practitioner', urgencyLevel: 'Low', disclaimer: 'AI guidance only.' });
 
-    // ── ADMIN endpoints ───────────────────────────────────────────────────
-    if (match(url, '/admin/stats'))                         return ok(FAKE.adminStats);
-    if (match(url, '/admin/doctors/') && match(url, '/approve')) return ok({ ...FAKE.adminDoctors[0], approvalStatus: 'Approved' });
-    if (match(url, '/admin/doctors/') && match(url, '/reject'))  return ok({ ...FAKE.adminDoctors[0], approvalStatus: 'Rejected' });
-    if (match(url, '/admin/doctors'))                       return paged(FAKE.adminDoctors);
-    if (match(url, '/admin/patients'))                      return paged(FAKE.doctorPatients);
+    // ── ADMIN ─────────────────────────────────────────────────────────────
+    if (match(url, '/admin/stats'))  return ok(FAKE.adminStats);
+    if (match(url, '/admin/doctors/') && match(url, '/approve')) { const id = extractId(url, '/doctors/'); return ok(updateById(FAKE.adminDoctors, id, { approvalStatus: 'Approved', reviewedAt: new Date().toISOString() })); }
+    if (match(url, '/admin/doctors/') && match(url, '/reject'))  { const id = extractId(url, '/doctors/'); return ok(updateById(FAKE.adminDoctors, id, { approvalStatus: 'Rejected', reviewedAt: new Date().toISOString() })); }
+    if (match(url, '/admin/doctors'))    return paged(FAKE.adminDoctors);
+    if (match(url, '/admin/patients'))   return paged(FAKE.doctorPatients);
     if (match(url, '/admin/providers') && match(url, '/approve')) return ok(null);
-    if (match(url, '/admin/providers'))                     return paged([]);
+    if (match(url, '/admin/providers'))  return paged([]);
     if (match(url, '/admin/users/') && method === 'DELETE') return ok(null);
 
-    // ── PROVIDER endpoints ────────────────────────────────────────────────
-    if (match(url, '/home-service/requests/mine')) return ok(FAKE.serviceRequests);
-    if (match(url, '/home-service/requests/') && method === 'PUT') return ok({ ...FAKE.serviceRequests[0], ...req.body });
-    if (match(url, '/home-service/visits'))       return ok({ id: 'vr-new', ...req.body, visitedAt: new Date().toISOString() });
+    // ── HOME SERVICE / PROVIDER ───────────────────────────────────────────
+    if (match(url, '/home-service/requests/') && match(url, '/accept')) {
+      const id = extractId(url, '/requests/');
+      return ok(updateById(FAKE.serviceRequests, id, { status: 'Accepted' }));
+    }
+    if (match(url, '/home-service/requests/') && match(url, '/complete')) {
+      const id = extractId(url, '/requests/');
+      return ok(updateById(FAKE.serviceRequests as any[], id, { status: 'Completed', completionNotes: req.body?.notes } as any));
+    }
+    if (match(url, '/home-service/requests/') && match(url, '/reject')) {
+      const id = extractId(url, '/requests/');
+      return ok(updateById(FAKE.serviceRequests as any[], id, { status: 'Rejected', rejectionReason: req.body?.reason } as any));
+    }
+    if (match(url, '/home-service/requests/mine'))  return ok(FAKE.serviceRequests);
+    if (match(url, '/home-service/requests/') && method === 'PUT') {
+      const id = extractId(url, '/requests/');
+      return ok(updateById(FAKE.serviceRequests, id, req.body));
+    }
+    if (match(url, '/home-service/requests/') && method === 'GET') {
+      return ok(FAKE.serviceRequests.find((x: any) => url.includes(x.id)) ?? FAKE.serviceRequests[0]);
+    }
+    if (match(url, '/home-service/requests') && method === 'POST') {
+      const nr = { ...req.body, id: 'sr-' + Date.now(), status: 'Pending' };
+      FAKE.serviceRequests.unshift(nr); return ok(nr);
+    }
+    if (match(url, '/home-service/requests'))  return ok(FAKE.serviceRequests);
+    if (match(url, '/home-service/providers'))  return ok([{ id: 'prov-001', firstName: 'Fatma', lastName: 'Mohamed', serviceType: 'Nursing', experience: 5, bio: 'Specialized in wound care.', rating: 4.8, reviewCount: 63, available: true }]);
+    if (match(url, '/home-service/visits'))     return ok({ id: 'vr-' + Date.now(), ...req.body, visitedAt: new Date().toISOString() });
 
-    // ── Fallback: pass through anything not matched ───────────────────────
-    console.warn('[MockInterceptor] Unmatched URL:', method, url);
+    console.warn('[MockInterceptor] Unmatched:', method, url);
     return next.handle(req);
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  HOW TO WIRE IN app.module.ts
-//  Replace the JWT interceptor with the mock one:
-//
+//  WIRING in app.module.ts:
 //  import { MockInterceptor } from './core/interceptors/mock.interceptor';
-//
-//  providers: [
-//    { provide: HTTP_INTERCEPTORS, useClass: MockInterceptor, multi: true },
-//  ]
-//
-//  When backend is ready, swap back to:
-//  import { JwtInterceptor } from './core/interceptors/jwt.interceptor';
-//  { provide: HTTP_INTERCEPTORS, useClass: JwtInterceptor, multi: true }
+//  providers: [{ provide: HTTP_INTERCEPTORS, useClass: MockInterceptor, multi: true }]
 // ─────────────────────────────────────────────────────────────────────────────

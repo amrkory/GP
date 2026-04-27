@@ -48,7 +48,8 @@ type Step = 'doctor' | 'slot' | 'confirm';
               <div class="doc-meta">
                 <span class="rating">⭐ {{ d.rating }}</span>
                 <span class="review-count">({{ d.reviewCount }})</span>
-<span class="fee">EGP {{ d.consultationFee ?? 0 }}</span>              </div>
+                
+              </div>
             </div>
             <div class="selected-dot" *ngIf="selectedDoctor()?.id === d.id">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="#D84040" stroke="none"><path d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
@@ -141,7 +142,8 @@ type Step = 'doctor' | 'slot' | 'confirm';
 
         <div class="fee-row">
           <span>Consultation fee</span>
-<strong>EGP {{ selectedDoctor()!.consultationFee ?? 0 }}</strong>        </div>
+          <strong>Consultation</strong>
+        </div>
 
         <div class="alert-success" *ngIf="booked()">
           ✅ Appointment booked successfully!
@@ -179,13 +181,14 @@ type Step = 'doctor' | 'slot' | 'confirm';
     .doc-spec    { font-size: 12px; color: #888; margin: 2px 0; }
     .doc-meta    { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #555; }
     .rating      { color: #f59e0b; font-weight: 600; }
-    .fee         { color: #D84040; font-weight: 600; margin-left: auto; }
+    .fee      { color: #D84040; font-weight: 600; margin-left: auto; }
     .selected-dot { flex-shrink: 0; }
 
     .selected-doctor-mini { display: flex; align-items: center; gap: 10px; background: #fff8f8; border: 1.5px solid #D84040; border-radius: 12px; padding: 12px 14px; margin-bottom: 16px; }
     .doc-avatar-sm { width: 38px; height: 38px; border-radius: 50%; background: #D84040; color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 
-    .field { margin-bottom: 14px; label { display: block; font-size: 13px; font-weight: 600; color: #111; margin-bottom: 6px; } }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 13px; font-weight: 600; color: #111; margin-bottom: 6px; }
     .date-input  { width: 100%; padding: 10px 14px; border: 1.5px solid #e8e8e8; border-radius: 10px; font-size: 14px; font-family: 'Cairo', sans-serif; outline: none; box-sizing: border-box; }
     .date-input:focus { border-color: #D84040; }
     .notes-input { width: 100%; padding: 10px 14px; border: 1.5px solid #e8e8e8; border-radius: 10px; font-size: 14px; font-family: 'Cairo', sans-serif; outline: none; resize: none; box-sizing: border-box; }
@@ -210,8 +213,8 @@ type Step = 'doctor' | 'slot' | 'confirm';
     .confirm-label { color: #888; }
     .confirm-val   { font-weight: 600; color: #111; text-align: right; max-width: 60%; }
 
-    .fee-row   { display: flex; justify-content: space-between; padding: 12px 16px; background: #fff; border-radius: 12px; margin-bottom: 16px; font-size: 15px; }
-    .fee-row strong { color: #D84040; }
+    -row   { display: flex; justify-content: space-between; padding: 12px 16px; background: #fff; border-radius: 12px; margin-bottom: 16px; font-size: 15px; }
+    -row strong { color: #D84040; }
 
     .alert-success { background: #E1F5EE; color: #0F6E56; border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; font-size: 14px; font-weight: 600; }
 
@@ -248,7 +251,7 @@ export class BookAppointmentComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    this.svc.getDoctors().subscribe(res => {
+    this.svc.getDoctors().subscribe((res: any) => {
       this.allDoctors.set(res.data.items);
       this.filteredDoctors.set(res.data.items);
       this.loading.set(false);
@@ -271,7 +274,7 @@ export class BookAppointmentComponent implements OnInit {
     if (!this.selectedDate || !this.selectedDoctor()) return;
     this.slotsLoading.set(true);
     this.selectedSlot.set(null);
-    this.svc.getSlots(this.selectedDoctor()!.id, this.selectedDate).subscribe(res => {
+    this.svc.getSlots(this.selectedDoctor()!.id, this.selectedDate).subscribe((res: any) => {
       this.slots.set(res.data);
       this.slotsLoading.set(false);
     });
@@ -292,7 +295,7 @@ export class BookAppointmentComponent implements OnInit {
     this.booking.set(true);
     this.svc.book({
       doctorId: this.selectedDoctor()!.id,
-      scheduledAt: this.selectedSlot()!.startTime,
+      appointmentTime: this.selectedSlot()!.startTime,
       type: this.apptType as any,
       notes: this.notes || undefined,
     }).subscribe(() => {

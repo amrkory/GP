@@ -130,7 +130,7 @@ export class AppointmentListComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.svc.getMyAppointments().subscribe(res => {
+    this.svc.getMyAppointments().subscribe((res: any) => {
       this.appointments.set(res.data);
       this.loading.set(false);
     });

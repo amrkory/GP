@@ -35,7 +35,7 @@ import { MedicalRecord }                       from '../../../core/models/api.mo
       <!-- Upload form -->
       <div class="upload-form" *ngIf="selectedFile && !uploading()">
         <div class="file-preview">
-          <span class="file-icon">{{ fileIcon() }}</span>
+          <span class="file-icon" [innerHTML]="fileIcon()"></span>
           <div>
             <div class="file-name">{{ selectedFile.name }}</div>
             <div class="file-size">{{ formatSize(selectedFile.size) }}</div>
@@ -72,7 +72,7 @@ import { MedicalRecord }                       from '../../../core/models/api.mo
         <!-- List -->
         <div class="record-list">
           <div class="record-card" *ngFor="let r of filteredRecords()">
-            <div class="rec-icon">{{ typeIcon(r.type) }}</div>
+            <div class="rec-icon" [innerHTML]="typeIcon(r.type)"></div>
             <div class="rec-info">
               <div class="rec-title">{{ r.title }}</div>
               <div class="rec-meta">
@@ -95,7 +95,8 @@ import { MedicalRecord }                       from '../../../core/models/api.mo
     </div>
   `,
   styles: [`
-    .page { padding:16px; max-width:640px; margin:0 auto; }
+    .page { padding:24px; max-width:900px; }
+    @media (max-width:768px) { .page { padding:16px; } }
     .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
     .page-header h1 { font-size:22px; font-weight:700; color:#111; }
     .btn-add { display:flex; align-items:center; gap:4px; background:#D84040; color:#fff; border:none; border-radius:10px; padding:8px 14px; font-size:14px; font-weight:600; cursor:pointer; }
@@ -110,7 +111,7 @@ import { MedicalRecord }                       from '../../../core/models/api.mo
 
     .upload-form { background:#fff; border-radius:14px; padding:16px; margin-bottom:16px; box-shadow:0 1px 8px rgba(0,0,0,0.06); }
     .file-preview { display:flex; align-items:center; gap:10px; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid #f5f5f5; }
-    .file-icon    { font-size:28px; }
+    .file-icon    { width:36px; height:36px; display:flex; align-items:center; justify-content:center; }
     .file-name    { font-size:14px; font-weight:600; color:#111; }
     .file-size    { font-size:12px; color:#888; }
 
@@ -134,7 +135,7 @@ import { MedicalRecord }                       from '../../../core/models/api.mo
 
     .record-list { display:flex; flex-direction:column; gap:10px; }
     .record-card { background:#fff; border-radius:12px; padding:14px; display:flex; align-items:center; gap:12px; box-shadow:0 1px 8px rgba(0,0,0,0.05); }
-    .rec-icon    { font-size:28px; flex-shrink:0; }
+    .rec-icon    { width:32px; height:32px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
     .rec-info    { flex:1; }
     .rec-title   { font-size:14px; font-weight:600; color:#111; margin-bottom:3px; }
     .rec-meta    { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
@@ -166,7 +167,7 @@ export class MedicalRecordsComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    this.svc.getRecords().subscribe(res => { this.records.set(res.data.items); this.loading.set(false); });
+    this.svc.getRecords().subscribe((res: any) => { this.records.set(res?.data?.items ?? res?.data ?? []); this.loading.set(false); });
   }
 
   filteredRecords(): MedicalRecord[] {
@@ -188,7 +189,7 @@ export class MedicalRecordsComponent implements OnInit {
     this.uploading.set(true);
     this.uploadingName = this.selectedFile.name;
     this.svc.uploadRecord(this.selectedFile, this.uploadTitle || this.selectedFile.name, this.uploadType)
-      .subscribe(res => {
+      .subscribe((res: any) => {
         this.records.update(r => [res.data, ...r]);
         this.uploading.set(false);
         this.selectedFile = null;
@@ -204,9 +205,21 @@ export class MedicalRecordsComponent implements OnInit {
   view(r: MedicalRecord): void { if (r.fileUrl && r.fileUrl !== '#') window.open(r.fileUrl); }
 
   typeIcon(type: string): string {
-    const m: Record<string,string> = { LabResult:'🧪', Imaging:'🩻', Report:'📄', Vaccination:'💉', Other:'📁' };
-    return m[type] ?? '📁';
+    const icons: Record<string,string> = {
+      LabResult: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11l-4 7h14l-4-7V3"/></svg>',
+      Imaging:   '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6B5BAD" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+      Report:    '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+      Vaccination:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D84040" stroke-width="2"><path d="m18 2 4 4-14 14H4v-4Z"/><path d="m14.5 5.5 4 4"/><path d="M3 22 1.5 20.5"/></svg>',
+      Other:     '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+    };
+    return icons[type] ?? icons['Other'];
   }
-  fileIcon(): string { if (!this.selectedFile) return '📁'; const ext = this.selectedFile.name.split('.').pop()?.toLowerCase(); return ext === 'pdf' ? '📄' : ['jpg','jpeg','png'].includes(ext??'') ? '🖼️' : '📁'; }
+  fileIcon(): string {
+    if (!this.selectedFile) return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+    const ext = this.selectedFile.name.split('.').pop()?.toLowerCase();
+    if (ext === 'pdf') return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#D84040" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="15" x2="15" y2="15"/></svg>';
+    if (['jpg','jpeg','png'].includes(ext??'')) return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+    return '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+  }
   formatSize(bytes: number): string { return bytes > 1048576 ? (bytes/1048576).toFixed(1)+' MB' : (bytes/1024).toFixed(0)+' KB'; }
 }

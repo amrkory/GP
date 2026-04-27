@@ -88,7 +88,7 @@ import { FamilyMember }                        from '../../../core/models/api.mo
         </div>
 
         <div class="empty" *ngIf="members().length === 0 && !showForm()">
-          <div class="empty-icon">👨‍👩‍👧‍👦</div>
+          <div class="empty-icon-wrap"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
           <p>No family members added yet</p>
           <button class="btn-empty" (click)="showForm.set(true)">Add first member</button>
         </div>
@@ -96,7 +96,8 @@ import { FamilyMember }                        from '../../../core/models/api.mo
     </div>
   `,
   styles: [`
-    .page { padding:16px; max-width:640px; margin:0 auto; }
+    .page { padding:24px; max-width:900px; }
+    @media (max-width:768px) { .page { padding:16px; } }
     .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
     .page-header h1 { font-size:22px; font-weight:700; color:#111; }
     .btn-add { display:flex; align-items:center; gap:4px; background:#D84040; color:#fff; border:none; border-radius:10px; padding:8px 14px; font-size:14px; font-weight:600; cursor:pointer; }
@@ -127,7 +128,7 @@ import { FamilyMember }                        from '../../../core/models/api.mo
     .remove-btn    { width:32px; height:32px; border-radius:8px; border:1.5px solid #FBDCDC; background:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#D84040; flex-shrink:0; }
 
     .empty { text-align:center; padding:40px 20px; background:#fff; border-radius:14px; }
-    .empty-icon { font-size:48px; margin-bottom:12px; }
+    .empty-icon-wrap { width:72px; height:72px; background:#f0f0f0; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
     .empty p    { color:#888; font-size:15px; margin-bottom:16px; }
     .btn-empty  { background:#D84040; color:#fff; border:none; padding:10px 20px; border-radius:10px; font-size:14px; font-weight:600; cursor:pointer; }
   `],
@@ -144,13 +145,13 @@ export class FamilyComponent implements OnInit {
   relations = ['Mother','Father','Spouse','Son','Daughter','Brother','Sister','Grandfather','Grandmother','Other'];
 
   ngOnInit(): void {
-    this.svc.getFamilyMembers().subscribe(res => { this.members.set(res.data); this.loading.set(false); });
+    this.svc.getFamilyMembers().subscribe((res: any) => { this.members.set(res?.data ?? []); this.loading.set(false); });
   }
 
   addMember(): void {
     this.saving.set(true);
     const body = { firstName: this.form.firstName, lastName: this.form.lastName, relation: this.form.relation, dateOfBirth: this.form.dateOfBirth || new Date().toISOString().split('T')[0], gender: (this.form.gender || 'Male') as 'Male'|'Female', phone: this.form.phone || null };
-    this.svc.addFamilyMember(body).subscribe(res => {
+    this.svc.addFamilyMember(body).subscribe((res: any) => {
       this.members.update(m => [...m, res.data]);
       this.saving.set(false);
       this.cancelForm();

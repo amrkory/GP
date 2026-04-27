@@ -66,14 +66,15 @@ import { Checklist, ChecklistTask }            from '../../../core/models/api.mo
         </div>
 
         <div class="empty" *ngIf="checklists().length === 0">
-          <div class="empty-icon">✅</div>
+          <div class="empty-icon-wrap"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></div>
           <p>No checklists assigned yet</p>
         </div>
       </ng-container>
     </div>
   `,
   styles: [`
-    .page { padding:16px; max-width:640px; margin:0 auto; }
+    .page { padding:24px; max-width:900px; }
+    @media (max-width:768px) { .page { padding:16px; } }
     .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
     .page-header h1 { font-size:22px; font-weight:700; color:#111; }
     .loading { display:flex; justify-content:center; padding:40px; }
@@ -113,7 +114,7 @@ import { Checklist, ChecklistTask }            from '../../../core/models/api.mo
     .progress-fill { height:100%; background:#D84040; border-radius:3px; transition:width .3s; }
 
     .empty { text-align:center; padding:40px 20px; background:#fff; border-radius:14px; }
-    .empty-icon { font-size:48px; margin-bottom:12px; }
+    .empty-icon-wrap { width:72px; height:72px; background:#f0f0f0; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; }
     .empty p    { color:#888; font-size:15px; }
   `],
 })
@@ -124,13 +125,13 @@ export class ChecklistComponent implements OnInit {
   checklists = signal<Checklist[]>([]);
 
   ngOnInit(): void {
-    this.svc.getChecklists().subscribe(res => { this.checklists.set(res.data); this.loading.set(false); });
+    this.svc.getChecklists().subscribe((res: any) => { this.checklists.set(res.data); this.loading.set(false); });
   }
 
   toggleTask(cl: Checklist, task: ChecklistTask, e: Event): void {
     e.stopPropagation(); e.preventDefault();
     if (task.status === 'Completed') return;
-    this.svc.completeTask(cl.id, task.id).subscribe(res => {
+    this.svc.completeTask(cl.id, task.id).subscribe((res: any) => {
       this.checklists.update(list => list.map(c =>
         c.id === cl.id ? { ...c, tasks: c.tasks.map(t => t.id === task.id ? res.data : t) } : c
       ));

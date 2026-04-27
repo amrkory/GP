@@ -1,162 +1,211 @@
 import { Component, inject, signal } from '@angular/core';
-import { CommonModule }               from '@angular/common';
-import { HttpClient }                 from '@angular/common/http';
-import { environment }                from '../../../../environments/environment';
-import { ApiResponse, FoodRecognitionResult } from '../../../core/models/api.models';
+import { CommonModule }  from '@angular/common';
+import { FormsModule }   from '@angular/forms';
+import { AiService }     from '../../../core/services/ai.service';
+
+interface FoodEntry { food: string; calories: number; protein?: number; carbs?: number; fat?: number; }
 
 @Component({
   selector: 'app-nutrition',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="page">
-      <div class="page-header"><h1>Nutrition Tracker</h1></div>
-
-      <!-- Upload zone -->
-      <div class="upload-zone" (click)="fileInput.click()" [class.has-preview]="preview()">
-        <input #fileInput type="file" accept="image/*" style="display:none" (change)="onFile($event)" />
-        <img *ngIf="preview()" [src]="preview()!" class="preview-img" alt="food" />
-        <div class="upload-placeholder" *ngIf="!preview()">
-          <div class="upload-icon">📸</div>
-          <p>Take a photo of your meal</p>
-          <span>AI will identify food and calculate calories</span>
-        </div>
-        <div class="change-photo" *ngIf="preview()">Tap to change photo</div>
+      <div class="page-header">
+        <h1>Nutrition Tracker</h1>
+        <p class="page-sub">AI-powered calorie & nutrition analysis</p>
       </div>
 
-      <button class="btn-analyze" (click)="analyze()"
-              [disabled]="!selectedFile || analyzing() || !!result()"
-              *ngIf="preview()">
-        <span class="mini-spinner" *ngIf="analyzing()"></span>
-        {{ analyzing() ? 'Analyzing...' : result() ? 'Analysis Complete' : '🔍 Analyze Meal' }}
-      </button>
+      <!-- Search -->
+      <div class="search-card">
+        <div class="search-title">Analyze Food</div>
+        <div class="search-row">
+          <input [(ngModel)]="foodInput"
+                 placeholder="e.g. Koshary, grilled chicken, salad..."
+                 class="food-input"
+                 (keydown.enter)="analyze()" />
+          <button class="btn-analyze" (click)="analyze()" [disabled]="searching() || !foodInput.trim()">
+            <span class="mini-spinner" *ngIf="searching()"></span>
+            {{ searching() ? 'Analyzing...' : 'Analyze' }}
+          </button>
+        </div>
+        <div class="error-msg" *ngIf="error()">{{ error() }}</div>
+      </div>
 
-      <!-- Results -->
+      <!-- AI Result -->
       <div class="result-card" *ngIf="result()">
-        <div class="calories-banner">
-          <div class="calories-num">{{ result()!.totalCalories }}</div>
-          <div class="calories-label">Total Calories</div>
+        <div class="result-header">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          AI Analysis for "{{ result()!.food }}"
         </div>
-
-        <div class="predictions">
-          <h3>Detected Foods</h3>
-          <div class="pred-row" *ngFor="let p of result()!.topPredictions">
-            <div class="pred-info">
-              <div class="pred-name">{{ p.label }}</div>
-              <div class="pred-bar-wrap">
-                <div class="pred-bar" [style.width.%]="p.confidence * 100"></div>
-              </div>
-            </div>
-            <div class="pred-right">
-              <div class="pred-cal">{{ p.calories }} kcal</div>
-              <div class="pred-conf">{{ (p.confidence * 100).toFixed(0) }}%</div>
-            </div>
+        <div class="macros-grid">
+          <div class="macro-box calories">
+            <div class="macro-num">{{ result()!.calories }}</div>
+            <div class="macro-lbl">Calories</div>
+          </div>
+          <div class="macro-box protein" *ngIf="result()!.protein">
+            <div class="macro-num">{{ result()!.protein }}g</div>
+            <div class="macro-lbl">Protein</div>
+          </div>
+          <div class="macro-box carbs" *ngIf="result()!.carbs">
+            <div class="macro-num">{{ result()!.carbs }}g</div>
+            <div class="macro-lbl">Carbs</div>
+          </div>
+          <div class="macro-box fat" *ngIf="result()!.fat">
+            <div class="macro-num">{{ result()!.fat }}g</div>
+            <div class="macro-lbl">Fat</div>
           </div>
         </div>
-
-        <div class="advice-box" *ngIf="result()!.nutritionAdvice">
-          <div class="advice-icon">💡</div>
-          <p>{{ result()!.nutritionAdvice }}</p>
+        <div class="advice" *ngIf="advice()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {{ advice() }}
         </div>
-
-        <button class="btn-reset" (click)="reset()">Analyze Another Meal</button>
+        <button class="btn-add" (click)="addToLog()">+ Add to Today's Log</button>
       </div>
 
-      <!-- Tips -->
-      <div class="tips-section" *ngIf="!result()">
-        <h3>Nutrition Tips</h3>
-        <div class="tip-card" *ngFor="let t of tips">
-          <span class="tip-icon">{{ t.icon }}</span>
-          <div>
-            <div class="tip-title">{{ t.title }}</div>
-            <div class="tip-text">{{ t.text }}</div>
+      <!-- Today's log -->
+      <div class="log-section" *ngIf="todayLog().length > 0">
+        <div class="log-header">
+          <span>Today's Log</span>
+          <span class="total-cal">{{ totalCalories() }} kcal total</span>
+        </div>
+        <div class="log-list">
+          <div class="log-item" *ngFor="let item of todayLog(); let i = index">
+            <div class="log-food">{{ item.food }}</div>
+            <div class="log-cal">{{ item.calories }} kcal</div>
+            <button class="del-btn" (click)="removeItem(i)">×</button>
           </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-section">
+          <div class="progress-label">
+            <span>Daily Goal (2000 kcal)</span>
+            <span>{{ progressPct() }}%</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width]="progressPct() + '%'"
+                 [class.over]="progressPct() > 100"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick suggestions -->
+      <div class="suggestions">
+        <div class="sugg-title">Quick Search</div>
+        <div class="sugg-chips">
+          <button *ngFor="let s of suggestions" class="chip" (click)="quickSearch(s)">{{ s }}</button>
         </div>
       </div>
     </div>
   `,
   styles: [`
-    .page { padding:16px; max-width:640px; margin:0 auto; }
-    .page-header h1 { font-size:22px; font-weight:700; color:#111; margin-bottom:16px; }
-    .upload-zone { border:2px dashed #e8e8e8; border-radius:16px; min-height:200px; display:flex; align-items:center; justify-content:center; cursor:pointer; margin-bottom:12px; overflow:hidden; position:relative; background:#fafafa; transition:all .2s; }
-    .upload-zone:hover { border-color:#D84040; background:#FEF2F2; }
-    .upload-zone.has-preview { border-style:solid; border-color:#D84040; background:#000; }
-    .preview-img { width:100%; height:220px; object-fit:cover; opacity:0.9; }
-    .upload-placeholder { text-align:center; padding:24px; }
-    .upload-icon { font-size:40px; margin-bottom:10px; }
-    .upload-placeholder p    { font-size:15px; color:#555; font-weight:500; margin-bottom:4px; }
-    .upload-placeholder span { font-size:12px; color:#aaa; }
-    .change-photo { position:absolute; bottom:10px; right:10px; background:rgba(0,0,0,0.6); color:#fff; font-size:12px; padding:4px 10px; border-radius:10px; }
-    .btn-analyze { width:100%; padding:14px; background:#D84040; color:#fff; border:none; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; font-family:'Cairo',sans-serif; margin-bottom:12px; }
-    .btn-analyze:disabled { opacity:0.55; cursor:not-allowed; }
-    .mini-spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:6px; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-    .result-card { background:#fff; border-radius:16px; overflow:hidden; margin-bottom:16px; box-shadow:0 1px 8px rgba(0,0,0,0.06); }
-    .calories-banner { background:#D84040; padding:20px; text-align:center; }
-    .calories-num    { font-size:40px; font-weight:700; color:#fff; }
-    .calories-label  { font-size:14px; color:rgba(255,255,255,0.8); }
-    .predictions { padding:16px; }
-    .predictions h3 { font-size:15px; font-weight:700; color:#111; margin-bottom:12px; }
-    .pred-row    { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
-    .pred-info   { flex:1; }
-    .pred-name   { font-size:14px; font-weight:600; color:#111; margin-bottom:4px; }
-    .pred-bar-wrap { height:6px; background:#f0f0f0; border-radius:3px; overflow:hidden; }
-    .pred-bar    { height:100%; background:#D84040; border-radius:3px; transition:width .5s; }
-    .pred-right  { text-align:right; flex-shrink:0; }
-    .pred-cal    { font-size:14px; font-weight:700; color:#D84040; }
-    .pred-conf   { font-size:11px; color:#888; }
-    .advice-box  { display:flex; gap:10px; align-items:flex-start; background:#E1F5EE; margin:0 16px 16px; border-radius:10px; padding:12px 14px; }
-    .advice-icon { font-size:20px; flex-shrink:0; }
-    .advice-box p { font-size:13px; color:#0F6E56; line-height:1.5; }
-    .btn-reset   { width:calc(100% - 32px); margin:0 16px 16px; padding:12px; border:1.5px solid #D84040; background:#fff; color:#D84040; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; display:block; }
-    .tips-section    { margin-top:4px; }
-    .tips-section h3 { font-size:16px; font-weight:700; color:#111; margin-bottom:10px; }
-    .tip-card  { background:#fff; border-radius:12px; padding:14px; display:flex; align-items:flex-start; gap:12px; margin-bottom:10px; box-shadow:0 1px 6px rgba(0,0,0,0.05); }
-    .tip-icon  { font-size:24px; flex-shrink:0; }
-    .tip-title { font-size:14px; font-weight:600; color:#111; margin-bottom:2px; }
-    .tip-text  { font-size:13px; color:#888; line-height:1.4; }
+    .page{padding:24px;max-width:640px;}@media(max-width:768px){.page{padding:16px;}}
+    .page-header{margin-bottom:20px;}.page-header h1{font-size:22px;font-weight:800;color:#111;margin-bottom:4px;}
+    .page-sub{font-size:14px;color:#888;}
+    .search-card{background:#fff;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 1px 8px rgba(0,0,0,.06);}
+    .search-title{font-size:14px;font-weight:700;color:#111;margin-bottom:12px;}
+    .search-row{display:flex;gap:10px;}
+    .food-input{flex:1;padding:11px 14px;border:1.5px solid #e8e8e8;border-radius:10px;font-size:14px;outline:none;font-family:'Cairo',sans-serif;}
+    .food-input:focus{border-color:#0F6E56;}
+    .btn-analyze{padding:11px 18px;background:#0F6E56;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;}
+    .btn-analyze:disabled{opacity:.6;cursor:not-allowed;}
+    .mini-spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .error-msg{color:#D84040;font-size:13px;margin-top:8px;}
+    .result-card{background:#fff;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 1px 8px rgba(0,0,0,.06);border-left:4px solid #0F6E56;}
+    .result-header{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:#111;margin-bottom:14px;}
+    .macros-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;}
+    .macro-box{border-radius:12px;padding:12px 8px;text-align:center;}
+    .macro-box.calories{background:#FEF2F2;}.macro-box.protein{background:#E1F5EE;}.macro-box.carbs{background:#E6F1FB;}.macro-box.fat{background:#FEF9E7;}
+    .macro-num{font-size:20px;font-weight:800;color:#111;}.macro-lbl{font-size:11px;color:#888;margin-top:2px;}
+    .advice{display:flex;align-items:flex-start;gap:6px;background:#E6F1FB;border-radius:10px;padding:10px 12px;font-size:13px;color:#185FA5;margin-bottom:12px;line-height:1.5;}
+    .btn-add{width:100%;padding:11px;background:#E1F5EE;color:#0F6E56;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;}
+    .btn-add:hover{background:#C8EDDF;}
+    .log-section{background:#fff;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 1px 8px rgba(0,0,0,.06);}
+    .log-header{display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:#111;margin-bottom:12px;}
+    .total-cal{color:#0F6E56;font-size:13px;}
+    .log-list{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+    .log-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#F7F8FA;border-radius:8px;}
+    .log-food{flex:1;font-size:14px;color:#111;}.log-cal{font-size:13px;font-weight:600;color:#555;}
+    .del-btn{background:none;border:none;color:#aaa;cursor:pointer;font-size:18px;line-height:1;}
+    .del-btn:hover{color:#D84040;}
+    .progress-section{margin-top:4px;}
+    .progress-label{display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:6px;}
+    .progress-bar{height:8px;background:#f0f0f0;border-radius:4px;overflow:hidden;}
+    .progress-fill{height:100%;background:#0F6E56;border-radius:4px;transition:width .3s;max-width:100%;}
+    .progress-fill.over{background:#D84040;}
+    .suggestions{background:#fff;border-radius:14px;padding:16px;box-shadow:0 1px 8px rgba(0,0,0,.06);}
+    .sugg-title{font-size:13px;font-weight:600;color:#888;margin-bottom:10px;}
+    .sugg-chips{display:flex;flex-wrap:wrap;gap:8px;}
+    .chip{background:#F7F8FA;border:1.5px solid #e8e8e8;border-radius:20px;padding:6px 14px;font-size:13px;color:#555;cursor:pointer;font-family:'Cairo',sans-serif;}
+    .chip:hover{border-color:#0F6E56;color:#0F6E56;background:#E1F5EE;}
   `],
 })
 export class NutritionComponent {
-  private http = inject(HttpClient);
+  private ai = inject(AiService);
 
-  preview      = signal<string | null>(null);
-  analyzing    = signal(false);
-  result       = signal<FoodRecognitionResult | null>(null);
-  selectedFile: File | null = null;
+  searching = signal(false);
+  result    = signal<FoodEntry | null>(null);
+  error     = signal('');
+  advice    = signal('');
+  todayLog  = signal<FoodEntry[]>([]);
+  foodInput = '';
 
-  tips = [
-    { icon:'🥗', title:'Eat more vegetables', text:'Aim for at least 5 servings of vegetables daily.' },
-    { icon:'💧', title:'Stay hydrated',       text:'Drink 8 glasses of water per day for optimal health.' },
-    { icon:'🍽️', title:'Portion control',    text:'Use smaller plates to help manage your portion sizes.' },
-    { icon:'🌾', title:'Choose whole grains', text:'Replace white rice and bread with whole grain alternatives.' },
-  ];
+  suggestions = ['Koshary', 'Ful medames', 'Grilled chicken', 'Rice', 'Salad', 'Eggs', 'Bread', 'Yogurt'];
 
-  onFile(e: Event): void {
-    const file = (e.target as HTMLInputElement).files?.[0];
-    if (!file) return;
-    this.selectedFile = file;
-    this.result.set(null);
-    const reader = new FileReader();
-    reader.onload = (ev: ProgressEvent<FileReader>) => this.preview.set(ev.target?.result as string);
-    reader.readAsDataURL(file);
+  totalCalories(): number {
+    return this.todayLog().reduce((sum: number, f: FoodEntry) => sum + f.calories, 0);
+  }
+
+  progressPct(): number {
+    return Math.min(Math.round((this.totalCalories() / 2000) * 100), 150);
+  }
+
+  quickSearch(food: string): void {
+    this.foodInput = food;
+    this.analyze();
   }
 
   analyze(): void {
-    if (!this.selectedFile) return;
-    this.analyzing.set(true);
-    const form = new FormData();
-    form.append('image', this.selectedFile);
-    this.http.post<ApiResponse<FoodRecognitionResult>>(
-      `${environment.apiUrl}/ai/food-recognize`, form
-    ).subscribe({
-      next: (res: ApiResponse<FoodRecognitionResult>) => {
-        this.result.set(res.data);
-        this.analyzing.set(false);
+    const food = this.foodInput.trim();
+    if (!food) return;
+    this.searching.set(true);
+    this.error.set('');
+    this.result.set(null);
+
+    this.ai.getCalories(food).subscribe({
+      next: (res: any) => {
+        const d = res?.data ?? res;
+        // Backend returns various shapes - handle all
+        const calories = d?.calories ?? d?.totalCalories ?? d?.calorieCount ?? 200;
+        const entry: FoodEntry = {
+          food,
+          calories: typeof calories === 'number' ? calories : parseInt(calories) || 200,
+          protein: d?.protein ?? d?.proteinGrams,
+          carbs:   d?.carbohydrates ?? d?.carbs ?? d?.carbsGrams,
+          fat:     d?.fat ?? d?.fatGrams,
+        };
+        this.result.set(entry);
+        this.advice.set(d?.nutritionAdvice ?? d?.advice ?? '');
+        this.searching.set(false);
       },
-      error: () => this.analyzing.set(false),
+      error: () => {
+        this.error.set('Could not analyze this food. Please try again.');
+        this.searching.set(false);
+      },
     });
   }
 
-  reset(): void { this.preview.set(null); this.selectedFile = null; this.result.set(null); }
+  addToLog(): void {
+    const r = this.result();
+    if (!r) return;
+    this.todayLog.update((log: FoodEntry[]) => [...log, { ...r }]);
+    this.result.set(null);
+    this.foodInput = '';
+  }
+
+  removeItem(index: number): void {
+    this.todayLog.update((log: FoodEntry[]) => log.filter((_: FoodEntry, i: number) => i !== index));
+  }
 }

@@ -3,8 +3,8 @@ import { CommonModule }                        from '@angular/common';
 import { FormsModule }                         from '@angular/forms';
 import { Router }                              from '@angular/router';
 import { HttpClient }                          from '@angular/common/http';
-import { environment }                         from '../../../../environments/environment';
-import { ApiResponse, ServiceRequest }         from '../../../core/models/api.models';
+import { environment }                         from '../../../../../environments/environment';
+import { ApiResponse, ServiceRequest }         from '../../../../core/models/api.models';
 
 @Component({
   selector: 'app-home-service',
@@ -138,14 +138,10 @@ import { ApiResponse, ServiceRequest }         from '../../../core/models/api.mo
     </div>
   `,
   styles: [`
-    .page { padding:24px; max-width:1100px; }
-    .page-body { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-    @media (max-width:768px) { .page { padding:16px; } .page-body { grid-template-columns:1fr; } }
+    .page { padding:16px; max-width:640px; margin:0 auto; }
     .page-header h1 { font-size:22px; font-weight:700; color:#111; margin-bottom:16px; }
 
-    .service-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:16px; }
-    @media (max-width:768px) { .service-grid { grid-template-columns:repeat(3,1fr); } }
-    @media (max-width:480px) { .service-grid { grid-template-columns:repeat(2,1fr); } }
+    .service-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
     .service-card { background:#fff; border-radius:12px; padding:14px 10px; text-align:center; border:1.5px solid #e8e8e8; cursor:pointer; transition:all .15s; }
     .service-card.selected { border-color:#D84040; background:#FEF2F2; }
 
@@ -238,7 +234,7 @@ export class HomeServiceComponent implements OnInit {
     this.sending.set(true);
     this.err.set('');
     this.http.post<ApiResponse<ServiceRequest>>(
-      `${environment.apiUrl}/HomeService/PatientRequests`,
+      `${environment.apiUrl}/home-service/requests`,
       { serviceType: this.serviceType, scheduledAt: this.scheduledAt, address: this.address, notes: this.notes || undefined }
     ).subscribe({
       next: (res: ApiResponse<ServiceRequest>) => {

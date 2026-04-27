@@ -40,6 +40,7 @@ export interface PatientProfile extends UserProfile {
   dateOfBirth: string; gender: 'Male' | 'Female';
   bloodType: string | null; weight: number | null; height: number | null;
   chronicDiseases: string[]; allergies: string[];
+  phone: string;             // guaranteed from UserProfile but declared here for clarity
 }
 
 export interface DoctorProfile extends UserProfile {
@@ -47,7 +48,8 @@ export interface DoctorProfile extends UserProfile {
   licenseNumber: string; bio: string | null; rating: number;
   reviewCount: number; yearsExperience: number;
   profileCompleted: boolean; calendlyEventUrl: string | null;
-   consultationFee?: number;
+  consultationFee?: number;  // optional - backend may or may not return this
+  workPlace?: string;        // real backend field name
 }
 
 export interface ProviderProfile extends UserProfile {
@@ -61,13 +63,18 @@ export type AppointmentType   = 'InPerson' | 'Video' | 'HomeVisit';
 export interface Appointment {
   id: string; patientId: string; patientName: string;
   doctorId: string; doctorName: string; specialtyName: string;
-  scheduledAt: string; durationMinutes: number;
+  scheduledAt: string;           // kept for backward compat
+  appointmentTime?: string;      // real backend field
+  durationMinutes: number;
   type: AppointmentType; status: AppointmentStatus;
   meetingLink: string | null; notes: string | null; cancellationReason: string | null;
 }
 
 export interface BookAppointmentRequest {
-  doctorId: string; scheduledAt: string; type: AppointmentType;
+  doctorId: string;
+  appointmentTime: string;  // real backend field
+  scheduledAt?: string;     // kept for backward compat
+  type: AppointmentType;
   notes?: string; calendlyEventUri?: string;
 }
 

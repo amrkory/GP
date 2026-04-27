@@ -130,14 +130,14 @@ export class RescheduleComponent implements OnInit {
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id')!;
-    this.svc.getById(id).subscribe(res => { this.appt.set(res.data); this.loading.set(false); });
+    this.svc.getMyAppointments().subscribe((res: any) => { const list = res?.data?.items ?? res?.data ?? []; this.appt.set(list.find((a: any) => a.id === id) ?? list[0] ?? null); this.loading.set(false); });
   }
 
   loadSlots(): void {
     if (!this.selectedDate || !this.appt()) return;
     this.slotsLoading.set(true);
     this.selectedSlot.set(null);
-    this.svc.getSlots(this.appt()!.doctorId, this.selectedDate).subscribe(res => {
+    this.svc.getSlots(this.appt()!.doctorId, this.selectedDate).subscribe((res: any) => {
       this.slots.set(res.data);
       this.slotsLoading.set(false);
     });
@@ -145,7 +145,7 @@ export class RescheduleComponent implements OnInit {
 
   save(): void {
     this.saving.set(true);
-    this.svc.reschedule(this.appt()!.id, this.selectedSlot()!.startTime).subscribe(() => {
+    this.svc.reschedule(this.appt()!.id, this.selectedSlot()!.startTime, 'Patient rescheduled').subscribe(() => {
       this.saving.set(false);
       this.done.set(true);
       setTimeout(() => this.nav.navigate(['/patient/appointments']), 1500);

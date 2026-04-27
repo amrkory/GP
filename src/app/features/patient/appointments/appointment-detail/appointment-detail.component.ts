@@ -129,9 +129,9 @@ import { Appointment }                         from '../../../../core/models/api
   `],
 })
 export class AppointmentDetailComponent implements OnInit {
-  private svc   = inject(AppointmentService);
+  private svc    = inject(AppointmentService);
   readonly router = inject(Router);
-  private route = inject(ActivatedRoute);
+  private route  = inject(ActivatedRoute);
 
   loading    = signal(true);
   cancelling = signal(false);
@@ -139,22 +139,29 @@ export class AppointmentDetailComponent implements OnInit {
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id')!;
-    this.svc.getById(id).subscribe(res => {
-      this.appt.set(res.data);
-      this.loading.set(false);
+    this.svc.getMyAppointments().subscribe({
+      next: (res: any) => {
+        const list: any[] = res?.data?.items ?? res?.data ?? [];
+        this.appt.set(list.find((a: any) => a.id === id) ?? list[0] ?? null);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
     });
   }
 
   cancelAppt(): void {
-    if (!confirm('Cancel this appointment?')) return;
     this.cancelling.set(true);
-    this.svc.cancel(this.appt()!.id, 'Patient requested cancellation').subscribe(res => {
-      this.appt.set(res.data);
-      this.cancelling.set(false);
+    this.svc.cancel(this.appt()!.id).subscribe({
+      next: () => {
+        this.appt.update(a => a ? { ...a, status: 'Cancelled' } : a);
+        this.cancelling.set(false);
+      },
+      error: () => this.cancelling.set(false),
     });
   }
 
   initials(name: string): string {
-    return name.replace('Dr. ','').split(' ').map((n:string)=>n[0]).join('').slice(0,2).toUpperCase();
+    return (name ?? '').replace('Dr. ', '').split(' ')
+      .map((n: string) => n[0] ?? '').join('').slice(0, 2).toUpperCase();
   }
 }

@@ -186,7 +186,59 @@ import { environment }                 from '../../../../../environments/environ
       </div>
     </div>
   `,
-styleUrls: ['./register-doctor.component.scss'],
+  styles: [`
+    
+    .auth-page{min-height:100vh;background:#F7F8FA;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+    .auth-card{background:#fff;border-radius:20px;padding:36px 28px;width:100%;max-width:520px;box-shadow:0 4px 32px rgba(0,0,0,0.07)}
+    .back-btn{display:flex;align-items:center;gap:6px;background:none;border:none;color:#888;font-size:14px;cursor:pointer;padding:0;margin-bottom:16px;font-family:'Cairo',sans-serif}
+    .steps{display:flex;gap:6px;margin-bottom:12px}
+    .step{flex:1;height:4px;border-radius:4px;background:#E8E8E8;transition:background .3s}
+    .step.done,.step.active{background:#D84040}
+    .step-label{font-size:13px;color:#888;margin-bottom:16px}
+    .step-label strong{color:#111}
+    .auth-title{font-size:24px;font-weight:700;color:#111;margin-bottom:16px}
+    .alert-error{background:#D84040-light;border:1px solid #FBDCDC;color:#B83030;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:16px}
+    .form-section{background:#FAFAFA;border:1px solid #E8E8E8;border-radius:14px;padding:20px;margin-bottom:16px}
+    .form-section h3{font-size:15px;font-weight:700;color:#111;margin-bottom:16px}
+    .field{margin-bottom:14px}
+    .field label{display:block;font-size:13px;font-weight:600;color:#111;margin-bottom:6px}
+    .req{color:#D84040}
+    .input-wrap{position:relative}
+    .input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#bbb;display:flex;pointer-events:none}
+    .eye-btn{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#bbb;padding:0;display:flex}
+    .input-wrap input,.input-wrap select{width:100%;padding:11px 14px 11px 42px;border:1.5px solid #E8E8E8;border-radius:10px;font-size:14px;font-family:'Cairo',sans-serif;color:#111;background:#fff;outline:none;transition:border-color .2s;box-sizing:border-box;appearance:none}
+    .input-wrap input::placeholder{color:#c0c0c0}
+    .input-wrap input:focus,.input-wrap select:focus{border-color:#D84040;box-shadow:0 0 0 3px rgba(216,64,64,0.08)}
+    .input-wrap.invalid input,.input-wrap.invalid select{border-color:#D84040}
+    .field-error{font-size:12px;color:#D84040;margin-top:4px}
+    .row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px;background:#F0F0F0;border-radius:10px;cursor:pointer;user-select:none}
+    .toggle-info strong{display:block;font-size:14px;color:#111}
+    .toggle-info span{font-size:12px;color:#888}
+    .toggle-switch{width:44px;height:24px;background:#E8E8E8;border-radius:12px;position:relative;transition:background .2s;flex-shrink:0}
+    .toggle-switch.on{background:#D84040}
+    .toggle-knob{position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;transition:transform .2s}
+    .toggle-switch.on .toggle-knob{transform:translateX(20px)}
+    .doc-note{font-size:13px;color:#888;margin-bottom:16px}
+    .upload-box{border:2px dashed #E8E8E8;border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s}
+    .upload-box:hover{border-color:#D84040;background:#D84040-light}
+    .upload-box.has-file{border-color:#22c55e;background:#f0fdf4}
+    .upload-hint{font-size:13px;color:#888;display:block;margin-top:8px}
+    .upload-hint small{display:block;margin-top:4px}
+    .upload-done{font-size:14px;color:#16a34a;font-weight:600}
+    .review-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E8E8E8;font-size:14px}
+    .review-row:last-child{border-bottom:none}
+    .review-row span{color:#888}
+    .review-row strong{color:#111}
+    .notice-box{display:flex;gap:10px;align-items:flex-start;background:#FAEEDA;border:1px solid #FAC775;border-radius:10px;padding:12px 14px;margin-bottom:16px}
+    .notice-box p{font-size:13px;color:#854F0B;line-height:1.5}
+    .btn-primary{width:100%;padding:14px;background:#D84040;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;font-family:'Cairo',sans-serif;cursor:pointer;margin-top:8px;transition:opacity .15s}
+    .btn-primary:disabled{opacity:0.55;cursor:not-allowed}
+    .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .auth-footer{text-align:center;font-size:14px;color:#888;margin-top:20px}
+    .auth-footer a{color:#D84040;font-weight:600;text-decoration:none}
+  `],
 })
 export class RegisterDoctorComponent {
   private fb     = inject(FormBuilder);
@@ -256,14 +308,20 @@ export class RegisterDoctorComponent {
     this.errorMsg.set('');
     const v1 = this.step1Form.value;
     const v2 = this.step2Form.value;
-    const body = {
-      firstName: v1.firstName, lastName: v1.lastName,
-      email: v1.email, password: v1.password, phone: v1.phone,
-      specialty: v2.specialty, licenseNumber: v2.licenseNumber,
-      yearsExperience: v2.experience, clinicName: v2.clinicName,
-      consultationFee: v2.fee, homeVisits: v2.homeVisits, role: 'Doctor',
+    // Map to real API: RegisterDoctorRequestDto
+    const body: any = {
+      firstName:       v1.firstName,
+      lastName:        v1.lastName,
+      email:           v1.email,
+      password:        v1.password,
+      confirmPassword: v1.password,   // form has only password field
+      phoneNumber:     v1.phone,
+      specialization:  v2.specialty,
+      licenseNumber:   v2.licenseNumber,
+      experienceYears: Number(v2.experience ?? 0),
+      workPlace:       v2.clinicName ?? '',
     };
-    this.http.post<any>(`${environment.apiUrl}/auth/register`, body).subscribe({
+    this.http.post<any>(`${environment.apiUrl}/Auth/register/doctor`, body).subscribe({
       next: () => this.router.navigate(['/auth/onboarding'], { queryParams: { pending: true } }),
       error: (err) => { this.loading.set(false); this.errorMsg.set(err?.error?.message ?? 'Registration failed.'); },
     });

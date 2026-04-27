@@ -20,8 +20,16 @@ const routes: Routes = [
       { path: 'prescriptions',   loadComponent: () => import('./prescriptions/prescriptions.component').then(c => c.PrescriptionsComponent) },
       { path: 'records',         loadComponent: () => import('./medical-records/medical-records.component').then(c => c.MedicalRecordsComponent) },
       { path: 'nutrition',       loadComponent: () => import('./nutrition/nutrition.component').then(c => c.NutritionComponent) },
-      { path: 'home-service',    loadComponent: () => import('./home-service/home-service.component').then(c => c.HomeServiceComponent) },
-      { path: 'home-service/available-nurses', loadComponent: () => import('./home-service/available-nurses/available-nurses.component').then(c => c.AvailableNursesComponent) },
+
+      // ── Home Service — uses children so available-nurses works as a sub-route ──
+      {
+        path: 'home-service',
+        children: [
+          { path: '',                loadComponent: () => import('./home-service/home-service.component').then(c => c.HomeServiceComponent) },
+          { path: 'available-nurses', loadComponent: () => import('./home-service/available-nurses/available-nurses.component').then(c => c.AvailableNursesComponent) },
+        ]
+      },
+
       { path: 'family',          loadComponent: () => import('./family/family.component').then(c => c.FamilyComponent) },
       { path: 'chat/:doctorId',  loadComponent: () => import('./chat/chat.component').then(c => c.PatientChatComponent) },
       { path: 'profile',         loadComponent: () => import('./profile/profile.component').then(c => c.PatientProfileComponent) },

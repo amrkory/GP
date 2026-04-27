@@ -1,21 +1,20 @@
-import { Injectable }  from '@angular/core';
-import { HttpClient }   from '@angular/common/http';
-import { Observable }   from 'rxjs';
-import { environment }  from '../../../environments/environment';
-import {
-  ApiResponse, PagedResult,
-  DoctorProfile, PatientProfile, Prescription, Checklist, VitalReading, Appointment,
-} from '../models/api.models';
+import { Injectable }    from '@angular/core';
+import { HttpClient }    from '@angular/common/http';
+import { Observable }    from 'rxjs';
+import { environment }   from '../../../environments/environment';
 
 export interface CreatePrescriptionDto {
-  patientId: string; diagnosis: string;
-  medicines: { name: string; dosage: string; frequency: string; duration: string; instructions?: string; }[];
-  notes?: string; validUntil?: string;
+  patientId: string;
+  diagnosis: string;
+  medicines: any[];
+  notes?: string;
+  validUntil?: string;
 }
 
 export interface AssignChecklistDto {
-  patientId: string; title: string;
-  tasks: { title: string; description?: string; frequency: 'Once' | 'Daily' | 'Weekly'; dueDate?: string; }[];
+  patientId: string;
+  title: string;
+  tasks: any[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -23,37 +22,48 @@ export class DoctorService {
   private api = environment.apiUrl;
   constructor(private http: HttpClient) {}
 
-  getProfile(): Observable<ApiResponse<DoctorProfile>> {
-    return this.http.get<ApiResponse<DoctorProfile>>(`${this.api}/doctor/profile`);
+  // Profile
+  getProfile(): Observable<any> {
+    return this.http.get<any>(`${this.api}/Profile/doctorData`);
   }
-  updateProfile(data: Partial<DoctorProfile>): Observable<ApiResponse<DoctorProfile>> {
-    return this.http.put<ApiResponse<DoctorProfile>>(`${this.api}/doctor/profile`, data);
+  updateProfile(dto: any): Observable<any> {
+    return this.http.put<any>(`${this.api}/Profile/doctorNurse`, dto);
   }
-  getPatients(search?: string): Observable<ApiResponse<PagedResult<PatientProfile>>> {
-    return this.http.get<ApiResponse<PagedResult<PatientProfile>>>(`${this.api}/doctor/patients`, { params: search ? { search } : {} });
+  updateSchedule(dto: any): Observable<any> {
+    return this.http.put<any>(`${this.api}/Profile/doctorNurse`, dto);
   }
-  getPatientById(id: string): Observable<ApiResponse<PatientProfile>> {
-    return this.http.get<ApiResponse<PatientProfile>>(`${this.api}/doctor/patients/${id}`);
+
+  // Patients
+  getPatients(pageNumber = 1, pageSize = 50): Observable<any> {
+    return this.http.get<any>(`${this.api}/Appointment/Doctors`, { params: { pageNumber, pageSize } });
   }
-  getPatientVitals(id: string): Observable<ApiResponse<VitalReading[]>> {
-    return this.http.get<ApiResponse<VitalReading[]>>(`${this.api}/doctor/patients/${id}/vitals`);
+  getPatientById(id: string): Observable<any> {
+    return this.http.get<any>(`${this.api}/Profile/patientData`);
   }
-  getPatientPrescriptions(id: string): Observable<ApiResponse<Prescription[]>> {
-    return this.http.get<ApiResponse<Prescription[]>>(`${this.api}/doctor/patients/${id}/prescriptions`);
+
+  // Patient vitals/prescriptions/checklists — no dedicated endpoints in backend yet
+  getPatientVitals(patientId: string): Observable<any> {
+    return this.http.get<any>(`${this.api}/Profile/patientData`);
   }
-  getPatientChecklists(id: string): Observable<ApiResponse<Checklist[]>> {
-    return this.http.get<ApiResponse<Checklist[]>>(`${this.api}/doctor/patients/${id}/checklists`);
+  getPatientPrescriptions(patientId: string): Observable<any> {
+    return this.http.get<any>(`${this.api}/Profile/patientData`);
   }
-  createPrescription(dto: CreatePrescriptionDto): Observable<ApiResponse<Prescription>> {
-    return this.http.post<ApiResponse<Prescription>>(`${this.api}/doctor/prescriptions`, dto);
+  getPatientChecklists(patientId: string): Observable<any> {
+    return this.http.get<any>(`${this.api}/Profile/patientData`);
   }
-  assignChecklist(dto: AssignChecklistDto): Observable<ApiResponse<Checklist>> {
-    return this.http.post<ApiResponse<Checklist>>(`${this.api}/doctor/checklists`, dto);
+
+  // Appointments
+  getAppointments(pageNumber = 1, pageSize = 50): Observable<any> {
+    return this.http.get<any>(`${this.api}/Appointment/doctor`, { params: { pageNumber, pageSize } });
   }
-  getAppointments(status?: string): Observable<ApiResponse<Appointment[]>> {
-    return this.http.get<ApiResponse<Appointment[]>>(`${this.api}/doctor/appointments`, { params: status ? { status } : {} });
+
+  // Prescriptions
+  createPrescription(dto: CreatePrescriptionDto): Observable<any> {
+    return this.http.post<any>(`${this.api}/Appointment/book`, dto); // placeholder
   }
-  updateSchedule(dto: any): Observable<ApiResponse<{ calendlyEventUrl: string }>> {
-    return this.http.put<ApiResponse<{ calendlyEventUrl: string }>>(`${this.api}/doctor/schedule`, dto);
+
+  // Checklists
+  assignChecklist(dto: AssignChecklistDto): Observable<any> {
+    return this.http.post<any>(`${this.api}/Appointment/book`, dto); // placeholder
   }
 }

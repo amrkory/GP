@@ -76,7 +76,40 @@ import { AuthService }                 from '../../../core/services/auth.service
       </div>
     </div>
   `,
-styleUrls: ['./login.component.scss'],
+  styles: [`
+    
+    .auth-page{min-height:100vh;background:#F7F8FA;display:flex;align-items:center;justify-content:center;padding:24px 16px}
+    .auth-card{background:#fff;border-radius:20px;padding:40px 36px;width:100%;max-width:480px;box-shadow:0 4px 32px rgba(0,0,0,0.07)}
+    .brand{display:flex;align-items:center;gap:10px;margin-bottom:28px}
+    .brand-icon{width:44px;height:44px;background:#D84040;border-radius:12px;display:flex;align-items:center;justify-content:center;svg{width:24px;height:24px}}
+    .brand-tagline{font-size:13px;color:#888}
+    .auth-title{font-size:26px;font-weight:700;color:#111;margin-bottom:6px}
+    .auth-sub{font-size:14px;color:#888;margin-bottom:28px}
+    .alert-error{background:#D84040-light;border:1px solid #FBDCDC;color:#B83030;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
+    .field{margin-bottom:16px}
+    .field label{display:block;font-size:13px;font-weight:600;color:#111;margin-bottom:6px}
+    .input-wrap{position:relative}
+    .input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#bbb;display:flex;pointer-events:none}
+    .eye-btn{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#bbb;padding:0;display:flex}
+    .input-wrap input{width:100%;padding:12px 14px 12px 42px;border:1.5px solid #E8E8E8;border-radius:12px;font-size:14px;font-family:'Cairo',sans-serif;color:#111;background:#fff;outline:none;transition:border-color .2s;box-sizing:border-box}
+    .input-wrap input::placeholder{color:#c0c0c0}
+    .input-wrap input:focus{border-color:#D84040;box-shadow:0 0 0 3px rgba(216,64,64,0.10)}
+    .input-wrap.invalid input{border-color:#D84040}
+    .field-error{font-size:12px;color:#D84040;margin-top:4px}
+    .meta-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+    .remember{display:flex;align-items:center;gap:8px;font-size:14px;color:#111;cursor:pointer}
+    .remember input{width:16px;height:16px;accent-color:#D84040;cursor:pointer}
+    .forgot-link{font-size:14px;font-weight:600;color:#D84040;text-decoration:none}
+    .btn-primary{width:100%;padding:14px;background:#D84040;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;font-family:'Cairo',sans-serif;cursor:pointer;margin-top:8px;transition:opacity .15s}
+    .btn-primary:hover:not(:disabled){opacity:0.92}
+    .btn-primary:disabled{opacity:0.55;cursor:not-allowed}
+    .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .auth-footer{text-align:center;font-size:14px;color:#888;margin-top:20px}
+    .auth-footer a{color:#D84040;font-weight:600;text-decoration:none}
+    .terms-note{text-align:center;font-size:12px;color:#888;margin-top:16px;line-height:1.6}
+    .terms-note a{color:#D84040;text-decoration:none;font-weight:500}
+  `],
 })
 export class LoginComponent {
   private fb     = inject(FormBuilder);

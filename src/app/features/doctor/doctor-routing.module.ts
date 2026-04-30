@@ -28,6 +28,7 @@ const routes: Routes = [
       { path: 'chat',            loadComponent: () => import('./chat/chat-list/chat-list.component').then(c => c.ChatListComponent) },
       { path: 'chat/:patientId', loadComponent: () => import('./chat/chat-room/chat-room.component').then(c => c.ChatRoomComponent) },
       { path: 'schedule',        loadComponent: () => import('./schedule/schedule.component').then(c => c.ScheduleComponent) },
+      { path: 'calendly', loadComponent: () => import('./calendly/calendly-connect.component').then(c => c.CalendlyConnectComponent) },
       { path: 'profile',         loadComponent: () => import('./profile/profile.component').then(c => c.DoctorProfileComponent) },
     ],
   },

@@ -7,12 +7,11 @@ import { SignalRService } from '../../../../core/services/signalr.service';
 import { AuthService }    from '../../../../core/services/auth.service';
 import { DoctorService }  from '../../../../core/services/doctor.service';
 import { ChatMessage, PatientProfile } from '../../../../core/models/api.models';
-import { RouterLink } from '@angular/router';
 
 @Component({
   selector: 'app-chat-room',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   template: `
     <div class="chat-page">
       <div class="chat-header">
@@ -26,7 +25,7 @@ import { RouterLink } from '@angular/router';
             <div class="online-dot" [class.online]="signalR.connected()">{{ signalR.connected() ? 'Online' : 'Offline' }}</div>
           </div>
         </div>
-        <a [routerLink]="['/doctor/patients', patientId]" class="view-btn">View Profile</a>
+        <button class="view-btn" (click)="viewPatient()">View Profile</button>
       </div>
       <div class="messages" #msgContainer>
         <div class="msg-wrap" *ngFor="let m of messages()" [class.mine]="m.senderId === myId()">
@@ -87,11 +86,12 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
   text      = ''; patientId = '';
   private sub?: Subscription;
   private shouldScroll = false;
+  viewPatient(): void { this.router.navigate(['/doctor/patients', this.patientId]); }
   myId() { return this.auth.userId(); }
   initials(): string { const p = this.patient()!; return p ? (p.firstName[0] + p.lastName[0]).toUpperCase() : ''; }
   ngOnInit(): void {
     this.patientId = this.route.snapshot.paramMap.get('patientId')!;
-    this.svc.getPatientById(this.patientId).subscribe(res => this.patient.set(res.data));
+    this.svc.getPatientById(this.patientId).subscribe((res: any) => this.patient.set(res.data));
     this.sub = this.signalR.message$.subscribe(msg => {
       if (msg.senderId === this.patientId || msg.receiverId === this.patientId) {
         this.messages.update(m => [...m, msg]);

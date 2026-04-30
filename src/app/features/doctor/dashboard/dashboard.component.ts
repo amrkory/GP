@@ -205,18 +205,44 @@ export class DoctorDashboardComponent implements OnInit {
   todayList:    Appointment[] = [];
 
   ngOnInit(): void {
+    // Get name from JWT then update from profile
     const u = this.auth.currentUser() as any;
-    this.doctorName = `${u?.given_name ?? ''} ${u?.family_name ?? ''}`.trim();
+    const jwtName = (`${u?.given_name ?? ''} ${u?.family_name ?? ''}`).trim()
+                 || u?.name || u?.email?.split('@')[0] || 'Doctor';
+    this.doctorName = jwtName;
 
-    this.docSvc.getAppointments().subscribe((res: any) => {
-      const all: Appointment[] = res.data;
-      const today = new Date().toDateString();
-      this.todayList    = all.filter(a => new Date(a.scheduledAt).toDateString() === today && ['Confirmed','Pending'].includes(a.status));
-      this.todayAppts   = this.todayList.length;
-      this.pendingAppts = all.filter(a => a.status === 'Pending').length;
-      this.loading.set(false);
+    // Load profile to get real name
+    this.docSvc.getProfile().subscribe({
+      next: (res: any) => {
+        const d = res?.data ?? res;
+        const name = (`${d?.firstName ?? ''} ${d?.lastName ?? ''}`).trim();
+        if (name) this.doctorName = name;
+      }
     });
 
-    this.docSvc.getPatients().subscribe((res: any) => { this.totalPatients = res.data.totalCount; });
+    // Load appointments from real backend
+    this.docSvc.getAppointments().subscribe({
+      next: (res: any) => {
+        const all: any[] = res?.data?.items ?? res?.data ?? res ?? [];
+        const today = new Date().toDateString();
+        this.todayList    = all.filter((a: any) =>
+          new Date(a.appointmentTime ?? a.scheduledAt).toDateString() === today
+          && ['Confirmed','Pending'].includes(a.status)
+        );
+        this.todayAppts   = this.todayList.length;
+        this.pendingAppts = all.filter((a: any) => a.status === 'Pending').length;
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
+
+    // Total patients from appointments list (no dedicated patients count endpoint)
+    this.docSvc.getAppointments().subscribe({
+      next: (res: any) => {
+        const all: any[] = res?.data?.items ?? res?.data ?? res ?? [];
+        const unique = new Set(all.map((a: any) => a.patientId));
+        this.totalPatients = unique.size;
+      }
+    });
   }
 }

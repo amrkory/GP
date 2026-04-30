@@ -37,7 +37,7 @@ export const routes: Routes = [
   {
     path: 'provider',
     canActivate: [AuthGuard, RoleGuard],
-    data: { roles: [Role.HomeService] },
+    data: { roles: [Role.Nurse] },
     loadChildren: () =>
       import('./features/service-provider/service-provider.module')
         .then(m => m.ServiceProviderModule),

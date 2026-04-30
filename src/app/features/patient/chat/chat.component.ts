@@ -125,10 +125,8 @@ export class PatientChatComponent implements OnInit, OnDestroy {
     this.messages.update((m: ChatMsg[]) => [...m, msg]);
     this.draft = '';
     this.scrollBottom();
-    // Send via HTTP (no SignalR send endpoint in swagger - backend may use SignalR hub)
-    this.http.post<any>(`${environment.apiUrl}/Chat/send`, {
-      receiverId: this.otherUserId, message: text
-    }).subscribe({ error: () => {} }); // fail silently - msg already shown optimistically
+    // Mark as read after sending
+    this.chatSvc.markRead(this.otherUserId).subscribe();
   }
 
   scrollBottom(): void {

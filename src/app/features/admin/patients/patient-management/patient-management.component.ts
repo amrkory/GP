@@ -108,7 +108,7 @@ export class PatientManagementComponent implements OnInit {
   filter(): void { const q = this.q.toLowerCase(); this.filtered.set(!q ? this.all() : this.all().filter(p => `${p.firstName} ${p.lastName} ${p.email}`.toLowerCase().includes(q))); }
   deletePatient(id: string): void { this.deleteTargetId = id; this.showDeleteDialog = true; }
   doDelete(): void {
-    this.http.delete(`${environment.apiUrl}/Auth/delete-account`, { body: { id: this.deleteTargetId } }).subscribe({
+    this.http.delete(`${environment.apiUrl}/Admin/delete-account`, { body: { id: this.deleteTargetId } }).subscribe({
       next: () => { this.all.update(a => a.filter(p => p.id !== this.deleteTargetId)); this.filter(); this.showDeleteDialog = false; },
       error: () => { this.all.update(a => a.filter(p => p.id !== this.deleteTargetId)); this.filter(); this.showDeleteDialog = false; }
     });

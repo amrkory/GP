@@ -78,18 +78,18 @@ import { Appointment, VitalReading, Checklist } from '../../../core/models/api.m
         <div class="appt-card" *ngIf="nextAppointment">
           <div class="appt-avatar">{{ doctorInitials(nextAppointment.doctorName) }}</div>
           <div class="appt-info">
-            <div class="appt-doctor">{{ nextAppointment.doctorName }}</div>
+            <div class="appt-doctor">{{ (nextAppointment.doctorName || 'Unknown Doctor') }}</div>
             <div class="appt-spec">{{ nextAppointment.specialtyName }}</div>
             <div class="appt-date">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
                 <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
               </svg>
-              {{ nextAppointment.scheduledAt | date:'EEE, MMM d · h:mm a' }}
+              {{ (nextAppointment.appointmentTime || nextAppointment.scheduledAt) | date:'EEE, MMM d · h:mm a' }}
             </div>
           </div>
           <div class="appt-type-badge">
-            <svg *ngIf="nextAppointment.type === 'Video'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <svg *ngIf="nextAppointment.type === 'video' || nextAppointment.type === 'Video'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/>
             </svg>
             <svg *ngIf="nextAppointment.type !== 'Video'" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -281,22 +281,44 @@ export class PatientDashboardComponent implements OnInit {
 
     this.appointmentSvc.getMyAppointments().subscribe({
       next: (res: any) => {
-        const list: any[] = res?.data?.items ?? res?.data ?? [];
-        const upcoming = list.filter((a: any) =>
-          ['Confirmed','Pending'].includes(a.status) && new Date(a.scheduledAt ?? a.appointmentTime) > new Date()
-        );
+        const list: any[] = res?.data?.items ?? res?.data ?? (Array.isArray(res) ? res : []);
+        // Normalize status: handles BOTH numeric (0,1,2,3,4) and string values
+        const statusOf = (a: any): string => {
+          const s = a.status;
+          const num: Record<number,string> = { 0:'pending', 1:'confirmed', 2:'cancelled', 3:'completed', 4:'rescheduled' };
+          if (typeof s === 'number') return num[s] ?? 'pending';
+          return String(s ?? '').toLowerCase();
+        };
+        // Upcoming = pending, confirmed, rescheduled only
+        const upcoming  = list.filter((a: any) => ['pending','confirmed','rescheduled'].includes(statusOf(a)));
         this.upcomingCount   = upcoming.length;
-        this.nextAppointment = upcoming.sort((a: any, b: any) =>
-          new Date(a.scheduledAt ?? a.appointmentTime).getTime() - new Date(b.scheduledAt ?? b.appointmentTime).getTime()
-        )[0] ?? null;
+        this.nextAppointment = upcoming.sort((a: any, b: any) => {
+          const ta = new Date(a.appointmentTime ?? a.scheduledAt ?? 0).getTime();
+          const tb = new Date(b.appointmentTime ?? b.scheduledAt ?? 0).getTime();
+          return ta - tb;
+        })[0] ?? list[0] ?? null;
       },
       error: () => {},
     });
 
-    this.patientSvc.getVitals().subscribe((res: any) => {
-      this.latestVitals = res.data.slice(0,4);
-      const bp = res.data.find((v: VitalReading) => v.type === 'BloodPressure');
-      this.latestBP = bp?.value ?? '---';
+    this.patientSvc.getProfile().subscribe({
+      next: (res: any) => {
+        const d = res?.data ?? res ?? {};
+        // Build vitals from profile fields
+        const vitals: any[] = [];
+        if (d.systolicPressure || d.diastolicPressure) {
+          this.latestBP = `${d.systolicPressure ?? '?'}/${d.diastolicPressure ?? '?'}`;
+          vitals.push({ type:'BloodPressure', value: this.latestBP, unit:'mmHg', label:'Blood Pressure' });
+        }
+        if (d.heartRate)  vitals.push({ type:'HeartRate',  value: d.heartRate,  unit:'bpm',   label:'Heart Rate' });
+        if (d.sugar)      vitals.push({ type:'Glucose',    value: d.sugar,      unit:'mg/dL', label:'Glucose' });
+        this.latestVitals = vitals;
+        // Also set user name from profile if JWT didn't have it
+        if (!this.userName && d.firstName) {
+          this.userName = `${d.firstName ?? ''} ${d.lastName ?? ''}`.trim();
+        }
+      },
+      error: () => {}
     });
 
     this.patientSvc.getChecklists().subscribe((res: any) => {

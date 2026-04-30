@@ -18,15 +18,15 @@ import { Appointment }    from '../../../../core/models/api.models';
       <div class="appt-list" *ngIf="!loading()">
         <a class="appt-card" *ngFor="let a of filtered()" [routerLink]="['/doctor/appointments', a.id]">
           <div class="appt-date-col">
-            <div class="appt-day">{{ a.scheduledAt | date:'d' }}</div>
-            <div class="appt-mon">{{ a.scheduledAt | date:'MMM' }}</div>
+            <div class="appt-day">{{ a.appointmentTime || a.scheduledAt | date:'d' }}</div>
+            <div class="appt-mon">{{ a.appointmentTime || a.scheduledAt | date:'MMM' }}</div>
           </div>
           <div class="appt-divider"></div>
           <div class="appt-body">
             <div class="appt-patient">{{ a.patientName }}</div>
             <div class="appt-time">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-              {{ a.scheduledAt | date:'h:mm a' }} · {{ a.durationMinutes }} min
+              {{ a.appointmentTime || a.scheduledAt | date:'h:mm a' }} · {{ a.durationMinutes }} min
             </div>
             <span class="type-pill" [class]="a.type.toLowerCase()">{{ a.type }}</span>
           </div>
@@ -84,7 +84,7 @@ export class DoctorAppointmentListComponent implements OnInit {
   ];
   filtered(): Appointment[] {
     const f = this.activeFilter(), now = new Date();
-    if (f === 'upcoming')  return this.all().filter(a => ['Confirmed','Pending'].includes(a.status) && new Date(a.scheduledAt) > now);
+    if (f === 'upcoming')  return this.all().filter(a => ['Confirmed','Pending'].includes(a.status) && new Date((a.appointmentTime || a.scheduledAt) ?? Date.now()) > now);
     if (f === 'completed') return this.all().filter(a => a.status === 'Completed');
     if (f === 'cancelled') return this.all().filter(a => a.status === 'Cancelled');
     return this.all();

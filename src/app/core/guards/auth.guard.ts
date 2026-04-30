@@ -9,7 +9,8 @@ export class AuthGuard implements CanActivate {
 
   canActivate(_route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean {
     if (this.auth.isLoggedIn() && !this.auth.isTokenExpired()) return true;
-    this.router.navigate(['/auth/login'], { queryParams: { returnUrl: state.url } });
+    // Don't save returnUrl — just go to login and let role detection redirect
+    this.router.navigate(['/auth/login']);
     return false;
   }
 }

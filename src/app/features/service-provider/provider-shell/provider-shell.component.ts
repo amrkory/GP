@@ -26,7 +26,7 @@ import { NotificationService } from '../../../core/services/notification.service
           <div class="user-avatar">{{ initials() }}</div>
           <div class="user-info">
             <div class="user-name">{{ userName() }}</div>
-            <div class="user-role">Nurse / Provider</div>
+            <div class="user-role">Nurse</div>
           </div>
         </div>
         <nav class="sidebar-nav">

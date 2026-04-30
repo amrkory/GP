@@ -281,22 +281,48 @@ export class RegisterPatientComponent {
     this.loading.set(true);
     this.errorMsg.set('');
     const v = this.form.value;
-    // Map to real API fields: RegisterPatientRequestDto
-    const body: any = {
-      firstName:       v.fullName?.split(' ')[0] ?? v.fullName,
-      lastName:        v.fullName?.split(' ').slice(1).join(' ') || v.fullName,
+
+    // Split fullName into firstName + lastName
+    // Swagger: POST /api/Auth/register/Patient
+    // body: { firstName, lastName, email, password, confirmPassword, gender, dateOfBirth (ISO), phoneNumber }
+    const nameParts  = (v.fullName ?? '').trim().split(/\s+/);
+    const firstName  = nameParts[0] ?? '';
+    const lastName   = nameParts.length > 1 ? nameParts.slice(1).join(' ') : firstName; // fallback: repeat first
+
+    // Format dateOfBirth as ISO string — backend needs full ISO 8601
+    let dateOfBirth: string | undefined;
+    if (v.dateOfBirth) {
+      try { dateOfBirth = new Date(v.dateOfBirth).toISOString(); } catch { dateOfBirth = undefined; }
+    }
+
+    const body = {
+      firstName,
+      lastName,
       email:           v.email,
       password:        v.password,
       confirmPassword: v.confirmPassword,
+      gender:          v.gender || 'Male',   // backend requires this field
+      dateOfBirth,
       phoneNumber:     v.phone,
-      gender:          v.gender || undefined,
-      dateOfBirth:     v.dateOfBirth ? new Date(v.dateOfBirth).toISOString() : undefined,
     };
+
+    console.log('[RegisterPatient] Sending:', body); // helpful for debugging
+
     this.http.post<any>(`${environment.apiUrl}/Auth/register/Patient`, body).subscribe({
-      next: () => this.router.navigate(['/auth/login'], { queryParams: { registered: true } }),
-      error: (err) => {
+      next: (res: any) => {
         this.loading.set(false);
-        this.errorMsg.set(err?.error?.message ?? 'Registration failed.');
+        this.router.navigate(['/auth/login'], { queryParams: { registered: true } });
+      },
+      error: (err: any) => {
+        this.loading.set(false);
+        // Show the real backend error message, not a generic one
+        const msg = err?.error?.message
+          ?? err?.error?.errors?.[0]
+          ?? err?.error?.title
+          ?? (typeof err?.error === 'string' ? err.error : null)
+          ?? `Registration failed (${err.status}). Please check your details.`;
+        this.errorMsg.set(msg);
+        console.error('[RegisterPatient] Error:', err);
       },
     });
   }

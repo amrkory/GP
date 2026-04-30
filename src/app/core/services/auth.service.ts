@@ -7,9 +7,17 @@ import { environment } from '../../../environments/environment';
 function jwtDecode(token: string): any {
   try {
     const b = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(atob(b));
+    const json = atob(b);
+    return JSON.parse(json);
   } catch { return {}; }
 }
+
+// Exact role values the backend JWT contains
+const ROLE_CLAIM_KEYS = [
+  'role', 'Role', 'roles',
+  'http://schemas.microsoft.com/ws/2008/06/identity/claims/role',
+  'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role',
+];
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -18,15 +26,20 @@ export class AuthService {
 
   constructor(private http: HttpClient, private router: Router) {}
 
+  // ── AUTH ─────────────────────────────────────────────────────────────────
   login(dto: { email: string; password: string } | string, pw?: string): Observable<any> {
-    const body = typeof dto === 'string'
-      ? { email: dto, password: pw }
-      : dto;
+    const body = typeof dto === 'string' ? { email: dto, password: pw } : dto;
     return this.http.post<any>(`${this.api}/Auth/login`, body).pipe(
       tap((res: any) => {
-        const t = res?.token ?? res?.accessToken
+        const token = res?.token ?? res?.accessToken
           ?? res?.data?.token ?? res?.data?.accessToken;
-        if (t && typeof t === 'string') this.saveToken(t);
+        if (token && typeof token === 'string') {
+          this.saveToken(token);
+          // Log JWT for debugging
+          const decoded = jwtDecode(token);
+          console.log('[Auth] JWT decoded:', decoded);
+          console.log('[Auth] Role detected:', this.extractRole(decoded));
+        }
       })
     );
   }
@@ -38,10 +51,11 @@ export class AuthService {
   resetPassword(dto: any): Observable<any>    { return this.http.post(`${this.api}/Auth/reset-password`, dto); }
   changePassword(dto: any): Observable<any>   { return this.http.post(`${this.api}/Auth/change/password`, dto); }
   acceptReject(userId: string, ok: boolean): Observable<any> {
-    return this.http.post(`${this.api}/Auth/accept-reject`, { userId, isAccepted: ok });
+    return this.http.post(`${this.api}/Admin/accept-reject`, { userId, isAccepted: ok });
   }
   refresh(): Observable<any> { return this.http.post<any>(`${this.api}/Auth/refresh`, {}); }
 
+  // ── TOKEN ─────────────────────────────────────────────────────────────────
   saveToken(token: string): void { localStorage.setItem(this.TOKEN_KEY, token); }
   getAccessToken(): string | null { return localStorage.getItem(this.TOKEN_KEY); }
 
@@ -53,40 +67,50 @@ export class AuthService {
   isLoggedIn(): boolean {
     const t = this.getAccessToken();
     if (!t) return false;
-    try { const d: any = jwtDecode(t); return (d.exp ?? 0) * 1000 > Date.now(); }
-    catch { return false; }
+    try {
+      const d = jwtDecode(t);
+      return (d.exp ?? 0) * 1000 > Date.now();
+    } catch { return false; }
   }
-
   isTokenExpired(): boolean { return !this.isLoggedIn(); }
 
+  // ── USER ──────────────────────────────────────────────────────────────────
   currentUser(): any {
     const t = this.getAccessToken();
     if (!t) return null;
-    try { return jwtDecode(t) as any; } catch { return null; }
+    try { return jwtDecode(t); } catch { return null; }
   }
 
   userId(): string {
     const u = this.currentUser();
     return u?.sub ?? u?.nameid
-      ?? u?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] ?? '';
+      ?? u?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier']
+      ?? '';
   }
 
-  getRole(): string {
-    const u = this.currentUser();
+  private extractRole(u: any): string {
     if (!u) return '';
-    return u?.role ?? u?.Role
-      ?? u?.['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']
-      ?? u?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/role']
-      ?? u?.roles ?? '';
+    for (const key of ROLE_CLAIM_KEYS) {
+      const val = u[key];
+      if (val) return Array.isArray(val) ? val[0] : String(val);
+    }
+    return '';
   }
 
-  role(): string { return this.getRole(); }
+  getRole(): string { return this.extractRole(this.currentUser()); }
+  role(): string    { return this.getRole(); }
 
   homeRouteForRole(): string {
-    const r = this.getRole().toLowerCase();
-    if (r.includes('admin'))                            return '/admin/dashboard';
-    if (r.includes('doctor'))                           return '/doctor/dashboard';
-    if (r.includes('nurse') || r.includes('provider')) return '/provider/dashboard';
+    const r = this.getRole().toLowerCase().trim();
+    console.log('[Auth] homeRouteForRole — role:', r);
+    if (r === 'admin')   return '/admin/dashboard';
+    if (r === 'doctor')  return '/doctor/dashboard';
+    if (r === 'nurse')   return '/provider/dashboard';
+    if (r === 'patient') return '/patient/dashboard';
+    // contains fallback
+    if (r.includes('admin'))  return '/admin/dashboard';
+    if (r.includes('doctor')) return '/doctor/dashboard';
+    if (r.includes('nurse'))  return '/provider/dashboard';
     return '/patient/dashboard';
   }
 }

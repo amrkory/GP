@@ -24,6 +24,7 @@ import { AuthService }                 from '../../../core/services/auth.service
         <h1 class="auth-title">Welcome Back</h1>
         <p class="auth-sub">Sign in to continue to your account</p>
 
+        <div class="alert-success" *ngIf="successMsg()">{{ successMsg() }}</div>
         <div class="alert-error" *ngIf="errorMsg()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           {{ errorMsg() }}
@@ -85,6 +86,7 @@ import { AuthService }                 from '../../../core/services/auth.service
     .brand-tagline{font-size:13px;color:#888}
     .auth-title{font-size:26px;font-weight:700;color:#111;margin-bottom:6px}
     .auth-sub{font-size:14px;color:#888;margin-bottom:28px}
+    .alert-success{background:#E1F5EE;border:1px solid #A7E3C8;border-radius:10px;padding:12px 14px;font-size:13px;color:#0F6E56;margin-bottom:16px;}
     .alert-error{background:#D84040-light;border:1px solid #FBDCDC;color:#B83030;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:16px;display:flex;align-items:center;gap:8px}
     .field{margin-bottom:16px}
     .field label{display:block;font-size:13px;font-weight:600;color:#111;margin-bottom:6px}
@@ -120,6 +122,7 @@ export class LoginComponent {
   showPass  = signal(false);
   loading   = signal(false);
   errorMsg  = signal('');
+  successMsg = signal('');
   submitted = false;
 
   form = this.fb.group({
@@ -138,14 +141,37 @@ export class LoginComponent {
     const { email, password } = this.form.value;
     this.auth.login({ email: email!, password: password! }).subscribe({
       next: () => {
-        const returnUrl = this.route.snapshot.queryParams['returnUrl'];
-        this.router.navigateByUrl(returnUrl ?? this.auth.homeRouteForRole());
-      },
-      error: (err) => {
         this.loading.set(false);
-        if (err.status === 401)      this.errorMsg.set('Incorrect email or password.');
-        else if (err.status === 423) this.errorMsg.set('Account locked. Try again in 15 minutes.');
-        else                         this.errorMsg.set(err?.error?.message ?? 'Something went wrong.');
+        // Always use homeRouteForRole - ignore any returnUrl completely
+        // This prevents old cached /auth/ URLs from causing NotFound
+        const role = this.auth.getRole().toLowerCase().trim();
+        let dest = '/patient/dashboard';
+        if (role === 'admin')   dest = '/admin/dashboard';
+        else if (role === 'doctor') dest = '/doctor/dashboard';
+        else if (role === 'nurse')  dest = '/provider/dashboard';
+        else if (role === 'patient') dest = '/patient/dashboard';
+        this.router.navigate([dest]);
+      },
+      error: (err: any) => {
+        this.loading.set(false);
+        // Check backend message first — it may give more detail
+        const backendMsg: string = (
+          err?.error?.message ?? err?.error?.title ?? err?.error ?? ''
+        ).toString().toLowerCase();
+
+        if (backendMsg.includes('pending') || backendMsg.includes('approval') || backendMsg.includes('approved')) {
+          this.errorMsg.set('Your account is pending admin approval. Please wait for an admin to approve your account.');
+        } else if (backendMsg.includes('not active') || backendMsg.includes('inactive') || backendMsg.includes('disabled')) {
+          this.errorMsg.set('Your account is not active yet. Please contact support.');
+        } else if (err.status === 401) {
+          this.errorMsg.set('Incorrect email or password.');
+        } else if (err.status === 423) {
+          this.errorMsg.set('Account locked. Try again in 15 minutes.');
+        } else if (err.status === 403) {
+          this.errorMsg.set('Your account is pending admin approval. Please wait for approval.');
+        } else {
+          this.errorMsg.set(err?.error?.message ?? 'Something went wrong. Please try again.');
+        }
       },
     });
   }

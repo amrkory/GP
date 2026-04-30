@@ -1,7 +1,7 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule }                        from '@angular/common';
 import { FormsModule }                         from '@angular/forms';
-import { Router }                              from '@angular/router';
+import { Router, ActivatedRoute }                              from '@angular/router';
 import { HttpClient }                          from '@angular/common/http';
 import { environment }                         from '../../../../environments/environment';
 import { ApiResponse, ServiceRequest }         from '../../../core/models/api.models';
@@ -196,6 +196,7 @@ import { ApiResponse, ServiceRequest }         from '../../../core/models/api.mo
 export class HomeServiceComponent implements OnInit {
   private http    = inject(HttpClient);
   readonly router = inject(Router);
+  private route  = inject(ActivatedRoute);
 
   sending  = signal(false);
   sent     = signal(false);
@@ -227,28 +228,30 @@ export class HomeServiceComponent implements OnInit {
 
   selectService(type: string): void {
     this.serviceType = type;
-    this.router.navigate(
-      ['/patient/home-service/available-nurses'],
-      { queryParams: { type } }
-    );
+    this.router.navigate(['/patient/home-service/available-nurses'], { queryParams: { type: this.serviceType, address: this.address } });
   }
 
   submit(): void {
     if (!this.scheduledAt || !this.address) return;
     this.sending.set(true);
     this.err.set('');
-    this.http.post<ApiResponse<ServiceRequest>>(
-      `${environment.apiUrl}/HomeService/PatientRequests`,
-      { serviceType: this.serviceType, scheduledAt: this.scheduledAt, address: this.address, notes: this.notes || undefined }
-    ).subscribe({
-      next: (res: ApiResponse<ServiceRequest>) => {
-        this.requests.update(r => [res.data, ...r]);
+    // Exact fields from /api/HomeService/book spec
+    const body = {
+      serviceDescription: this.notes || this.serviceType || 'Home service request',
+      requestedTime:      new Date(this.scheduledAt).toISOString(),
+      address:            this.address,
+      nurseId:            this.route?.snapshot?.queryParams?.['nurseId'] ?? '',  // passed from available-nurses page
+    };
+    this.http.post<any>(`${environment.apiUrl}/HomeService/book`, body).subscribe({
+      next: (res: any) => {
+        const newReq = res?.data ?? res;
+        this.requests.update((r: any[]) => [newReq, ...r]);
         this.sending.set(false);
         this.sent.set(true);
       },
-      error: () => {
+      error: (err: any) => {
         this.sending.set(false);
-        this.err.set('Failed to send request. Please try again.');
+        this.err.set(err?.error?.message ?? 'Failed to send request. Please try again.');
       },
     });
   }

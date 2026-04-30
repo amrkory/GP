@@ -18,7 +18,12 @@ export class RoleGuard implements CanActivate {
     }
     if (userRole && allowed.includes(userRole as any)) return true;
 
-    this.router.navigate(['/unauthorized']);
+    // Redirect to correct dashboard instead of /unauthorized
+    const r = userRole.toLowerCase();
+    if (r === 'admin')   { this.router.navigate(['/admin/dashboard']);    return false; }
+    if (r === 'doctor')  { this.router.navigate(['/doctor/dashboard']);   return false; }
+    if (r === 'nurse')   { this.router.navigate(['/provider/dashboard']); return false; }
+    this.router.navigate(['/patient/dashboard']);
     return false;
   }
 }

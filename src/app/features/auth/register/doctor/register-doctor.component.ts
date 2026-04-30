@@ -322,8 +322,8 @@ export class RegisterDoctorComponent {
       workPlace:       v2.clinicName ?? '',
     };
     this.http.post<any>(`${environment.apiUrl}/Auth/register/doctor`, body).subscribe({
-      next: () => this.router.navigate(['/auth/onboarding'], { queryParams: { pending: true } }),
-      error: (err) => { this.loading.set(false); this.errorMsg.set(err?.error?.message ?? 'Registration failed.'); },
+      next: () => this.router.navigate(['/auth/login'], { queryParams: { registered: 'doctor' } }),
+      error: (err: any) => { this.loading.set(false); this.errorMsg.set(err?.error?.message ?? 'Registration failed.'); },
     });
   }
 }

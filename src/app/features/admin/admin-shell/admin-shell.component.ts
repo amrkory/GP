@@ -145,8 +145,19 @@ export class AdminShellComponent implements OnInit {
   private auth = inject(AuthService);
   sidebarCollapsed = false; mobileOpen = false;
   pendingCount = 2;
-  initials(): string { const u = this.auth.currentUser() as any; return ((u?.given_name?.[0]??'')+(u?.family_name?.[0]??'')).toUpperCase(); }
-  userName(): string { const u = this.auth.currentUser() as any; return `${u?.given_name??''} ${u?.family_name??''}`.trim(); }
+  initials(): string {
+    const u = this.auth.currentUser() as any;
+    if (!u) return 'A';
+    const first = u?.given_name ?? u?.firstName ?? u?.name?.split(' ')?.[0] ?? 'A';
+    const last  = u?.family_name ?? u?.lastName ?? u?.name?.split(' ')?.[1] ?? '';
+    return ((first[0] ?? '') + (last[0] ?? '')).toUpperCase() || 'AD';
+  }
+  userName(): string {
+    const u = this.auth.currentUser() as any;
+    if (!u) return 'Admin';
+    const full = (`${u?.given_name ?? ''} ${u?.family_name ?? ''}`).trim();
+    return (u?.name || full) || 'Admin';
+  }
   toggleSidebar(): void { if(window.innerWidth>=1025){this.sidebarCollapsed=!this.sidebarCollapsed;}else{this.mobileOpen=!this.mobileOpen;} }
   @HostListener('window:keydown.escape') onEsc() { this.mobileOpen=false; }
   logout() { this.auth.logout(); }

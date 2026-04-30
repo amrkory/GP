@@ -13,7 +13,7 @@ interface MedLine { name: string; dosage: string; frequency: string; duration: s
   template: `
     <div class="page">
       <div class="top-bar">
-        <button class="back-btn" (click)="router.back()">
+        <button class="back-btn" (click)="goBack()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <h1>Write Prescription</h1>
@@ -114,7 +114,7 @@ interface MedLine { name: string; dosage: string; frequency: string; duration: s
 })
 export class WritePrescriptionComponent implements OnInit {
   private svc   = inject(DoctorService);
-  readonly router = { back: () => window.history.back() };
+  goBack(): void { window.history.back(); }
   private route = inject(ActivatedRoute);
   private nav   = inject(Router);
 
@@ -145,7 +145,12 @@ export class WritePrescriptionComponent implements OnInit {
       notes: this.notes || undefined, validUntil: this.validUntil || undefined,
     };
     this.svc.createPrescription(dto).subscribe({
-      next: () => { this.saving.set(false); this.saved.set(true); setTimeout(() => this.nav.navigate(['/doctor/patients', this.patientId, 'prescriptions']), 1500); },
+      next: (res: any) => {
+        this.saving.set(false);
+        if (res?.success === false) console.warn('[WritePrescription]', res.message, 'DTO:', dto);
+        this.saved.set(true);
+        setTimeout(() => this.nav.navigate(['/doctor/patients', this.patientId, 'prescriptions']), 1500);
+      },
       error: () => { this.saving.set(false); this.err.set('Failed to save. Please try again.'); },
     });
   }

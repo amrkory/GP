@@ -139,7 +139,13 @@ export class RequestListComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.http.get<ApiResponse<ServiceRequest[]>>(`${environment.apiUrl}/HomeService/NurseRequests`)
-      .subscribe((res: any) => { this.all.set(res.data); this.loading.set(false); });
+    this.http.get<any>(`${environment.apiUrl}/HomeService/NurseRequests`).subscribe({
+      next: (res: any) => {
+        const list = res?.data?.items ?? res?.data ?? [];
+        this.all.set(Array.isArray(list) ? list : []);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false),
+    });
   }
 }

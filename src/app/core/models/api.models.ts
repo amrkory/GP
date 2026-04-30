@@ -57,25 +57,34 @@ export interface ProviderProfile extends UserProfile {
 }
 
 // ── Appointments ──────────────────────────────────────────────────────────────
-export type AppointmentStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Completed' | 'Rescheduled';
-export type AppointmentType   = 'InPerson' | 'Video' | 'HomeVisit';
+// Backend exact values from swagger
+export type AppointmentStatus = 'Pending' | 'Confirmed' | 'Cancelled' | 'Completed' | 'Rescheduled' | string;
+export type AppointmentType   = 'video' | 'in_person' | 'message' | string;
 
 export interface Appointment {
-  id: string; patientId: string; patientName: string;
-  doctorId: string; doctorName: string; specialtyName: string;
-  scheduledAt: string;           // kept for backward compat
-  appointmentTime?: string;      // real backend field
-  durationMinutes: number;
-  type: AppointmentType; status: AppointmentStatus;
-  meetingLink: string | null; notes: string | null; cancellationReason: string | null;
+  id: string;
+  patientId: string;
+  patientName: string;
+  doctorId: string;
+  doctorName: string;          // full name from backend
+  specialtyName: string;       // doctor specialty
+  appointmentTime: string;     // real backend field (ISO datetime)
+  scheduledAt?: string;        // fallback for old data
+  durationMinutes?: number;
+  type: AppointmentType;
+  status: AppointmentStatus;
+  meetingLink: string | null;
+  notes: string | null;
+  cancellationReason: string | null;
+  // Extra fields backend may return
+  [key: string]: any;
 }
 
 export interface BookAppointmentRequest {
   doctorId: string;
-  appointmentTime: string;  // real backend field
-  scheduledAt?: string;     // kept for backward compat
-  type: AppointmentType;
-  notes?: string; calendlyEventUri?: string;
+  appointmentTime: string;  // exact field name from swagger
+  type: AppointmentType;    // "video" | "in_person" | "message"
+  notes?: string;
 }
 
 export interface TimeSlot {

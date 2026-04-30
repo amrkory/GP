@@ -65,7 +65,7 @@ import { environment }    from '../../../../environments/environment';
             <div class="stat-num">{{ stats().pendingProviders }}</div>
             <div class="stat-lbl">Pending Providers</div>
           </div>
-          <a routerLink="/admin/providers" class="stat-link urgent">Review →</a>
+          <a routerLink="/admin/doctors/pending" class="stat-link urgent">Review →</a>
         </div>
         <div class="stat-card">
           <div class="stat-icon teal">
@@ -158,7 +158,36 @@ export class AdminDashboardComponent implements OnInit {
   private http = inject(HttpClient);
   stats = signal({ totalPatients:0, totalDoctors:0, totalAppointments:0, pendingDoctors:0, pendingProviders:0, appointmentsToday:0 });
   ngOnInit(): void {
-    this.http.get<any>(`${environment.apiUrl}/admin/stats`)
-      .subscribe(res => this.stats.set(res.data));
+    // Load real counts from backend
+    this.http.get<any>(`${environment.apiUrl}/Admin/users/count`).subscribe({
+      next: (res: any) => {
+        const v = res?.data ?? res ?? 0;
+        this.stats.update(s => ({ ...s, totalPatients: typeof v === 'object' ? (v.patientCount ?? 0) : v }));
+      }
+    });
+    this.http.get<any>(`${environment.apiUrl}/Admin/nurses/count`).subscribe({
+      next: (res: any) => {
+        const v = res?.data ?? res ?? 0;
+        this.stats.update(s => ({ ...s, totalDoctors: typeof v === 'number' ? v : 0 }));
+      }
+    });
+    this.http.get<any>(`${environment.apiUrl}/Admin/patients/count`).subscribe({
+      next: (res: any) => {
+        const v = res?.data ?? res ?? 0;
+        this.stats.update(s => ({ ...s, totalPatients: typeof v === 'number' ? v : 0 }));
+      }
+    });
+    this.http.get<any>(`${environment.apiUrl}/Admin/pending/doctors`).subscribe({
+      next: (res: any) => {
+        const list = res?.data?.items ?? res?.data ?? [];
+        this.stats.update(s => ({ ...s, pendingDoctors: Array.isArray(list) ? list.length : 0 }));
+      }
+    });
+    this.http.get<any>(`${environment.apiUrl}/Admin/pending/nurses`).subscribe({
+      next: (res: any) => {
+        const list = res?.data?.items ?? res?.data ?? [];
+        this.stats.update(s => ({ ...s, pendingProviders: Array.isArray(list) ? list.length : 0 }));
+      }
+    });
   }
 }

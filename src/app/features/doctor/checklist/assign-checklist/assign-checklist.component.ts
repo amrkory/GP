@@ -13,7 +13,7 @@ interface TaskLine { title: string; description: string; frequency: 'Once'|'Dail
   template: `
     <div class="page">
       <div class="top-bar">
-        <button class="back-btn" (click)="router.back()">
+        <button class="back-btn" (click)="goBack()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <h1>Assign Checklist</h1>
@@ -96,7 +96,7 @@ interface TaskLine { title: string; description: string; frequency: 'Once'|'Dail
 })
 export class AssignChecklistComponent implements OnInit {
   private svc   = inject(DoctorService);
-  readonly router = { back: () => window.history.back() };
+  goBack(): void { window.history.back(); }
   private route = inject(ActivatedRoute);
   private nav   = inject(Router);
   saving = signal(false); saved = signal(false); err = signal('');
@@ -114,7 +114,12 @@ export class AssignChecklistComponent implements OnInit {
       tasks: this.tasks.map(t => ({ title: t.title, description: t.description || undefined, frequency: t.frequency, dueDate: t.dueDate || undefined })),
     };
     this.svc.assignChecklist(dto).subscribe({
-      next: () => { this.saving.set(false); this.saved.set(true); setTimeout(() => this.nav.navigate(['/doctor/patients', this.patientId, 'checklist']), 1500); },
+      next: (res: any) => {
+        this.saving.set(false);
+        if (res?.success === false) console.warn('[AssignChecklist]', res.message, 'DTO:', dto);
+        this.saved.set(true);
+        setTimeout(() => this.nav.navigate(['/doctor/patients', this.patientId, 'checklist']), 1500);
+      },
       error: () => { this.saving.set(false); this.err.set('Failed. Please try again.'); },
     });
   }

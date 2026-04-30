@@ -25,27 +25,27 @@ import { ApiResponse, Appointment } from '../../../../core/models/api.models';
       <ng-container *ngIf="!loading() && appt()">
         <!-- Patient card -->
         <div class="patient-card">
-          <div class="pat-avatar">{{ patInitials(appt()!.patientName) }}</div>
+          <div class="pat-avatar">{{ patInitials(getPatientName()) }}</div>
           <div class="pat-info">
-            <div class="pat-name">{{ appt()!.patientName }}</div>
+            <div class="pat-name">{{ getPatientName() }}</div>
             <div class="pat-spec">{{ appt()!.specialtyName }}</div>
           </div>
-          <span class="status-badge" [class]="appt()!.status.toLowerCase()">{{ appt()!.status }}</span>
+          <span class="status-badge" [class]="getStatusCls()">{{ getStatusText() }}</span>
         </div>
 
         <!-- Info rows -->
         <div class="info-card">
           <div class="info-row">
             <div class="info-icon blue"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
-            <div><div class="info-lbl">Date</div><div class="info-val">{{ appt()!.scheduledAt | date:'EEEE, MMMM d, y' }}</div></div>
+            <div><div class="info-lbl">Date</div><div class="info-val">{{ (appt()!.appointmentTime || appt()!.scheduledAt) | date:'EEEE, MMMM d, y' }}</div></div>
           </div>
           <div class="info-row">
             <div class="info-icon green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-            <div><div class="info-lbl">Time</div><div class="info-val">{{ appt()!.scheduledAt | date:'h:mm a' }} · {{ appt()!.durationMinutes }} min</div></div>
+            <div><div class="info-lbl">Time</div><div class="info-val">{{ (appt()!.appointmentTime || appt()!.scheduledAt) | date:'h:mm a' }}</div></div>
           </div>
           <div class="info-row">
             <div class="info-icon purple"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B5BAD" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
-            <div><div class="info-lbl">Type</div><div class="info-val">{{ appt()!.type }}</div></div>
+            <div><div class="info-lbl">Type</div><div class="info-val">{{ getTypeLabel() }}</div></div>
           </div>
           <div class="info-row" *ngIf="appt()!.notes">
             <div class="info-icon gray"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
@@ -62,7 +62,7 @@ import { ApiResponse, Appointment } from '../../../../core/models/api.models';
         </div>
 
         <!-- Action buttons -->
-        <div class="actions" *ngIf="appt()!.status === 'Pending'">
+        <div class="actions" *ngIf="isStatus('Pending')">
           <button class="btn-confirm" (click)="confirmAppt()" [disabled]="!!acting()">
             <span class="mini-spinner" *ngIf="acting() === 'confirm'"></span>
             <svg *ngIf="acting() !== 'confirm'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
@@ -74,11 +74,12 @@ import { ApiResponse, Appointment } from '../../../../core/models/api.models';
           </button>
         </div>
 
-        <div class="actions" *ngIf="appt()!.status === 'Confirmed'">
-          <a [routerLink]="['/doctor/patients', appt()!.patientId]" class="btn-view-patient">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            View Patient Profile
-          </a>
+        <div class="actions" *ngIf="isStatus('Confirmed')">
+          <button class="btn-complete" (click)="completeAppt()" [disabled]="!!acting()">
+            <span class="mini-spinner" *ngIf="acting() === 'complete'"></span>
+            <svg *ngIf="acting() !== 'complete'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Mark as Completed
+          </button>
           <button class="btn-cancel-appt" (click)="promptCancel()" [disabled]="!!acting()">
             Cancel Appointment
           </button>
@@ -88,6 +89,10 @@ import { ApiResponse, Appointment } from '../../../../core/models/api.models';
         <div class="toast success" *ngIf="toast() === 'confirmed'">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           Appointment confirmed successfully!
+        </div>
+        <div class="toast completed" *ngIf="toast() === 'completed'">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Appointment marked as completed!
         </div>
         <div class="toast cancelled" *ngIf="toast() === 'cancelled'">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -107,7 +112,7 @@ import { ApiResponse, Appointment } from '../../../../core/models/api.models';
         </svg>
       </div>
       <h3>Cancel Appointment?</h3>
-      <p>This appointment with <strong>{{ appt()?.patientName }}</strong> on <strong>{{ appt()?.scheduledAt | date:'MMM d · h:mm a' }}</strong> will be cancelled. This action cannot be undone.</p>
+      <p>This appointment with <strong>{{ appt()?.patientName }}</strong> on <strong>{{ (appt()?.appointmentTime || appt()?.scheduledAt) | date:'MMM d · h:mm a' }}</strong> will be cancelled. This action cannot be undone.</p>
 
       <div class="field">
         <label>Reason for cancellation</label>
@@ -181,6 +186,10 @@ import { ApiResponse, Appointment } from '../../../../core/models/api.models';
     .toast { display:flex; align-items:center; gap:10px; padding:14px 16px; border-radius:12px; font-size:14px; font-weight:600; animation:fadeIn .3s ease; }
     .toast.success  { background:#E1F5EE; color:#0F6E56; }
     .toast.cancelled { background:#FEF2F2; color:#D84040; }
+    .toast.completed { background:#E6F1FB; color:#185FA5; }
+    .actions.three { display:flex; gap:8px; flex-wrap:wrap; }
+    .btn-complete { flex:1; padding:12px; background:#0F6E56; color:#fff; border:none; border-radius:12px; font-size:14px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-family:inherit; }
+    .btn-complete:disabled { opacity:.6; cursor:not-allowed; }
     @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
 
     /* Cancel dialog */
@@ -232,17 +241,31 @@ export class DoctorAppointmentDetailComponent implements OnInit {
 
   confirmAppt(): void {
     this.acting.set('confirm');
-    this.http.put<ApiResponse<Appointment>>(
-      `${environment.apiUrl}/Appointment/respond/${this.appt()!.id}?accept=true`, {}
+    this.http.put<any>(`${environment.apiUrl}/Appointment/respond/${this.appt()!.id}`, null,
+      { params: { accept: 'true' } }
     ).subscribe({
-      next: (res: any) => {
-        this.appt.set(res.data);
+      next: () => {
+        this.appt.update((a: any) => ({ ...a, status: 1 })); // 1 = Confirmed
         this.acting.set('');
         this.toast.set('confirmed');
         setTimeout(() => this.toast.set(''), 3000);
       },
       error: () => this.acting.set(''),
     });
+  }
+
+  completeAppt(): void {
+    this.acting.set('complete');
+    this.http.put<any>(`${environment.apiUrl}/Appointment/complete/${this.appt()!.id}`, {})
+      .subscribe({
+        next: () => {
+          this.appt.update((a: any) => ({ ...a, status: 3 })); // 3 = Completed
+          this.acting.set('');
+          this.toast.set('completed');
+          setTimeout(() => { this.toast.set(''); this.router.navigate(['/doctor/appointments']); }, 1800);
+        },
+        error: () => this.acting.set(''),
+      });
   }
 
   promptCancel(): void {
@@ -253,25 +276,51 @@ export class DoctorAppointmentDetailComponent implements OnInit {
   doCancel(): void {
     if (!this.cancelReason) return;
     this.acting.set('cancel');
-    this.http.put<ApiResponse<Appointment>>(
-      `${environment.apiUrl}/Appointment/doctor/cancel/${this.appt()!.id}`,
-      { reason: this.cancelReason }
-    ).subscribe({
-      next: (res: any) => {
-        this.appt.set(res.data);
-        this.acting.set('');
-        this.showCancelDialog = false;
-        this.toast.set('cancelled');
-        setTimeout(() => this.toast.set(''), 3000);
-      },
-      error: () => {
-        this.acting.set('');
-        this.showCancelDialog = false;
-      },
-    });
+    this.http.put<any>(`${environment.apiUrl}/Appointment/doctor/cancel/${this.appt()!.id}`, {})
+      .subscribe({
+        next: () => {
+          this.appt.update((a: any) => ({ ...a, status: 2, cancellationReason: this.cancelReason })); // 2 = Cancelled
+          this.acting.set('');
+          this.showCancelDialog = false;
+          this.toast.set('cancelled');
+          setTimeout(() => { this.toast.set(''); this.router.navigate(['/doctor/appointments']); }, 1800);
+        },
+        error: () => { this.acting.set(''); this.showCancelDialog = false; },
+      });
+  }
+
+  getStatusText(): string {
+    const s = this.appt()?.status;
+    const map: Record<number,string> = { 0:'Pending', 1:'Confirmed', 2:'Cancelled', 3:'Completed', 4:'Rescheduled' };
+    if (typeof s === 'number') return map[s] ?? 'Pending';
+    const sm: Record<string,string> = { pending:'Pending', confirmed:'Confirmed', cancelled:'Cancelled', completed:'Completed' };
+    return sm[String(s ?? '').toLowerCase()] ?? String(s ?? 'Pending');
+  }
+
+  getStatusCls(): string { return this.getStatusText().toLowerCase(); }
+
+  isStatus(status: string): boolean {
+    return this.getStatusText().toLowerCase() === status.toLowerCase();
   }
 
   patInitials(name: string): string {
-    return name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
+    if (!name) return '?';
+    return name.split(' ').map((n: string) => n[0] ?? '').join('').slice(0, 2).toUpperCase() || '?';
+  }
+
+  getPatientName(): string {
+    const a = this.appt() as any;
+    if (!a) return '';
+    const name = a.patientName ?? a.patientFirstName ?? '';
+    if (name && name !== 'Patient') return name;
+    return a.patientEmail?.split('@')[0] ?? 'Patient';
+  }
+
+  getTypeLabel(): string {
+    const t = (this.appt() as any)?.type;
+    const numMap: Record<number,string> = { 0:'In Person', 1:'Video Call', 2:'Message Chat' };
+    const strMap: Record<string,string> = { video:'Video Call', in_person:'In Person', message:'Message Chat' };
+    if (typeof t === 'number') return numMap[t] ?? 'In Person';
+    return strMap[String(t ?? '').toLowerCase()] ?? String(t ?? '');
   }
 }

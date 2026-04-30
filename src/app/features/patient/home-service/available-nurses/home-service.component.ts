@@ -1,10 +1,10 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule }                        from '@angular/common';
 import { FormsModule }                         from '@angular/forms';
-import { Router }                              from '@angular/router';
+import { Router, ActivatedRoute }                              from '@angular/router';
 import { HttpClient }                          from '@angular/common/http';
-import { environment }                         from '../../../../../environments/environment';
-import { ApiResponse, ServiceRequest }         from '../../../../core/models/api.models';
+import { environment }                         from '../../../../environments/environment';
+import { ApiResponse, ServiceRequest }         from '../../../core/models/api.models';
 
 @Component({
   selector: 'app-home-service',
@@ -138,10 +138,14 @@ import { ApiResponse, ServiceRequest }         from '../../../../core/models/api
     </div>
   `,
   styles: [`
-    .page { padding:16px; max-width:640px; margin:0 auto; }
+    .page { padding:24px; max-width:1100px; }
+    .page-body { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    @media (max-width:768px) { .page { padding:16px; } .page-body { grid-template-columns:1fr; } }
     .page-header h1 { font-size:22px; font-weight:700; color:#111; margin-bottom:16px; }
 
-    .service-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:16px; }
+    .service-grid { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:16px; }
+    @media (max-width:768px) { .service-grid { grid-template-columns:repeat(3,1fr); } }
+    @media (max-width:480px) { .service-grid { grid-template-columns:repeat(2,1fr); } }
     .service-card { background:#fff; border-radius:12px; padding:14px 10px; text-align:center; border:1.5px solid #e8e8e8; cursor:pointer; transition:all .15s; }
     .service-card.selected { border-color:#D84040; background:#FEF2F2; }
 
@@ -192,6 +196,7 @@ import { ApiResponse, ServiceRequest }         from '../../../../core/models/api
 export class HomeServiceComponent implements OnInit {
   private http    = inject(HttpClient);
   readonly router = inject(Router);
+  private route  = inject(ActivatedRoute);
 
   sending  = signal(false);
   sent     = signal(false);
@@ -223,28 +228,30 @@ export class HomeServiceComponent implements OnInit {
 
   selectService(type: string): void {
     this.serviceType = type;
-    this.router.navigate(
-      ['/patient/home-service/available-nurses'],
-      { queryParams: { type } }
-    );
+    this.router.navigate(['/patient/home-service/available-nurses'], { queryParams: { type: this.serviceType, address: this.address } });
   }
 
   submit(): void {
     if (!this.scheduledAt || !this.address) return;
     this.sending.set(true);
     this.err.set('');
-    this.http.post<ApiResponse<ServiceRequest>>(
-      `${environment.apiUrl}/home-service/requests`,
-      { serviceType: this.serviceType, scheduledAt: this.scheduledAt, address: this.address, notes: this.notes || undefined }
-    ).subscribe({
-      next: (res: ApiResponse<ServiceRequest>) => {
-        this.requests.update(r => [res.data, ...r]);
+    // Exact fields from /api/HomeService/book spec
+    const body = {
+      serviceDescription: this.notes || this.serviceType || 'Home service request',
+      requestedTime:      new Date(this.scheduledAt).toISOString(),
+      address:            this.address,
+      nurseId:            this.route?.snapshot?.queryParams?.['nurseId'] ?? '',  // passed from available-nurses page
+    };
+    this.http.post<any>(`${environment.apiUrl}/HomeService/book`, body).subscribe({
+      next: (res: any) => {
+        const newReq = res?.data ?? res;
+        this.requests.update((r: any[]) => [newReq, ...r]);
         this.sending.set(false);
         this.sent.set(true);
       },
-      error: () => {
+      error: (err: any) => {
         this.sending.set(false);
-        this.err.set('Failed to send request. Please try again.');
+        this.err.set(err?.error?.message ?? 'Failed to send request. Please try again.');
       },
     });
   }

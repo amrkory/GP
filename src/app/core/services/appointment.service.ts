@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AppointmentService {
+  needsRefresh = false; // set true after cancel/reschedule to force list reload
   private api = environment.apiUrl;
   constructor(private http: HttpClient) {}
 
@@ -73,6 +74,16 @@ export class AppointmentService {
   }
 
   // ── CALENDLY SLOTS ──────────────────────────────────────────────────────────
+  /** GET /api/Calendly/connect — initiate Calendly OAuth */
+  connectCalendly(): Observable<any> {
+    return this.http.get<any>(`${this.api}/Calendly/connect`);
+  }
+
+  /** GET /api/Calendly/doctor/event-types — for logged-in doctor */
+  getDoctorOwnEventTypes(): Observable<any> {
+    return this.http.get<any>(`${this.api}/Calendly/doctor/event-types`);
+  }
+
   /** GET /api/Calendly/slots/{doctorId}?eventTypeUri=...&from=...&to=... */
   getSlots(doctorId: string, date?: string, eventTypeUri?: string): Observable<any> {
     const params: any = {};

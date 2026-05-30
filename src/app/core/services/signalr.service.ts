@@ -1,72 +1,92 @@
 import { Injectable, OnDestroy, signal } from '@angular/core';
-import { Subject }                        from 'rxjs';
-import { AuthService }                    from './auth.service';
-import { environment }                    from '../../../environments/environment';
-import { Notification, ChatMessage, Appointment } from '../models/api.models';
-
-// NOTE: Run  npm install @microsoft/signalr  then uncomment the import below.
-// import * as signalR from '@microsoft/signalr';
-
-// Placeholder so the project compiles before the package is installed
-declare const signalR: any;
+import { Subject } from 'rxjs';
+import { AuthService } from './auth.service';
+import { environment } from '../../../environments/environment';
+import * as signalR from '@microsoft/signalr';
 
 @Injectable({ providedIn: 'root' })
 export class SignalRService implements OnDestroy {
-
-  private connection: any = null;
+  private conn: signalR.HubConnection | null = null;
   readonly connected = signal(false);
 
-  private msg$  = new Subject<ChatMessage>();
-  private notif$ = new Subject<Notification>();
-  private appt$  = new Subject<Appointment>();
+  private _msg$     = new Subject<any>();
+  private _read$    = new Subject<string>();
+  private _online$  = new Subject<string>();
+  private _offline$ = new Subject<string>();
 
-  readonly message$     = this.msg$.asObservable();
-  readonly notification$ = this.notif$.asObservable();
-  readonly appointment$  = this.appt$.asObservable();
+  readonly message$    = this._msg$.asObservable();
+  readonly read$out    = this._read$.asObservable();
+  readonly online$out  = this._online$.asObservable();
+  readonly offline$out = this._offline$.asObservable();
+
+  // Backward-compat aliases
+  get messagesRead$()      { return this.read$out; }
+  async startConnection()  { return this.start(); }
+  async stopConnection()   { return this.stop(); }
+  markAsRead(id: string)   { this.markRead(id); }
+  isOnline(_: string)      { return false; }
+  sendMessage(r: string, c: string) { this.sendMsg(r, c); }
 
   constructor(private auth: AuthService) {}
 
-  async startConnection(): Promise<void> {
-    if (typeof signalR === 'undefined') {
-      console.warn('[SignalR] @microsoft/signalr not installed yet. Run: npm install @microsoft/signalr');
-      return;
-    }
-    if (this.connection?.state === signalR.HubConnectionState.Connected) return;
+  async start(): Promise<void> {
+    if (this.conn?.state === signalR.HubConnectionState.Connected) return;
 
-    this.connection = new signalR.HubConnectionBuilder()
-      .withUrl(`${environment.socketUrl}/hubs/wateen`, {
+    this.conn = new signalR.HubConnectionBuilder()
+      .withUrl(`${environment.socketUrl}/hubs/chat`, {
         accessTokenFactory: () => this.auth.getAccessToken() ?? '',
         transport: signalR.HttpTransportType.WebSockets,
         skipNegotiation: true,
       })
-      .withAutomaticReconnect()
+      .withAutomaticReconnect([0, 2000, 5000, 10000])
+      .configureLogging(signalR.LogLevel.Warning)
       .build();
 
-    this.connection.on('ReceiveMessage',      (m: ChatMessage)   => this.msg$.next(m));
-    this.connection.on('ReceiveNotification', (n: Notification)  => this.notif$.next(n));
-    this.connection.on('AppointmentUpdated',  (a: Appointment)   => this.appt$.next(a));
-
-    this.connection.onreconnected(() => this.connected.set(true));
-    this.connection.onclose(()      => this.connected.set(false));
+    // Exact event names from Flutter backend
+    this.conn.on('ReceiveMessage', (msg: any) => {
+      console.log('[SignalR] ReceiveMessage:', JSON.stringify(msg));
+      this._msg$.next(msg);
+    });
+    this.conn.on('MessagesRead',  (uid: string) => this._read$.next(uid));
+    this.conn.on('UserOnline',    (uid: string) => this._online$.next(uid));
+    this.conn.on('UserOffline',   (uid: string) => this._offline$.next(uid));
+    this.conn.onreconnected(() => this.connected.set(true));
+    this.conn.onclose(()      => this.connected.set(false));
 
     try {
-      await this.connection.start();
+      await this.conn.start();
       this.connected.set(true);
-    } catch (e) { console.error('[SignalR]', e); }
-  }
-
-  async stopConnection(): Promise<void> {
-    if (this.connection) { await this.connection.stop(); this.connected.set(false); }
-  }
-
-  send(method: string, ...args: any[]) {
-    if (this.connection?.state === signalR.HubConnectionState?.Connected) {
-      this.connection.invoke(method, ...args);
+      console.log('[SignalR] Connected ✓');
+    } catch (e) {
+      console.error('[SignalR] Failed:', e);
     }
   }
 
-  ngOnDestroy() {
-    this.stopConnection();
-    [this.msg$, this.notif$, this.appt$].forEach(s => s.complete());
+  async stop(): Promise<void> {
+    await this.conn?.stop();
+    this.connected.set(false);
+  }
+
+  // Exact invoke from Flutter: args: [{"receiverId": ..., "messageContent": ...}]
+  sendMsg(receiverId: string, messageContent: string): void {
+    if (this.conn?.state !== signalR.HubConnectionState.Connected) {
+      console.error('[SignalR] Not connected');
+      return;
+    }
+    this.conn.invoke('SendMessage', { receiverId, messageContent })
+      .catch((e: any) => console.error('[SignalR] SendMessage error:', e));
+  }
+
+  // Exact invoke from Flutter: args: [otherUserId]
+  markRead(otherUserId: string): void {
+    if (this.conn?.state === signalR.HubConnectionState.Connected) {
+      this.conn.invoke('MarkAsRead', otherUserId)
+        .catch((e: any) => console.error('[SignalR] MarkAsRead error:', e));
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.stop();
+    [this._msg$, this._read$, this._online$, this._offline$].forEach(s => s.complete());
   }
 }

@@ -12,6 +12,7 @@ const routes: Routes = [
       { path: 'appointments',    loadComponent: () => import('./appointments/appointment-list/appointment-list.component').then(c => c.AppointmentListComponent) },
       { path: 'appointments/book', loadComponent: () => import('./appointments/book-appointment/book-appointment.component').then(c => c.BookAppointmentComponent) },
       { path: 'appointments/:id',  loadComponent: () => import('./appointments/appointment-detail/appointment-detail.component').then(c => c.AppointmentDetailComponent) },
+      { path: 'appointments/reschedule/:id', loadComponent: () => import('./appointments/book-appointment/book-appointment.component').then(c => c.BookAppointmentComponent) },
       { path: 'appointments/:id/reschedule', loadComponent: () => import('./appointments/reschedule/reschedule.component').then(c => c.RescheduleComponent) },
       { path: 'vitals',          loadComponent: () => import('./vitals/vitals.component').then(c => c.VitalsComponent) },
       { path: 'vitals/add',      loadComponent: () => import('./vitals/add-vitals/add-vitals.component').then(c => c.AddVitalsComponent) },

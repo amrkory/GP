@@ -2,9 +2,14 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule }   from '@angular/common';
 import { FormsModule }    from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { DoctorService, CreatePrescriptionDto } from '../../../../core/services/doctor.service';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { environment }    from '../../../../../environments/environment';
 
-interface MedLine { name: string; dosage: string; frequency: string; duration: string; instructions: string; }
+interface MedLine {
+  name: string; dosage: string; frequency: string;
+  duration: string; instructions: string;
+  startDate: string; endDate: string;
+}
 
 @Component({
   selector: 'app-write-prescription',
@@ -14,144 +19,218 @@ interface MedLine { name: string; dosage: string; frequency: string; duration: s
     <div class="page">
       <div class="top-bar">
         <button class="back-btn" (click)="goBack()">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
         </button>
         <h1>Write Prescription</h1>
         <span></span>
       </div>
-      <div class="form-card">
-        <div class="field">
-          <label>Diagnosis *</label>
-          <input [(ngModel)]="diagnosis" placeholder="e.g. Type 2 Diabetes" class="text-input" />
-        </div>
-        <div class="field">
-          <label>Valid Until</label>
-          <input [(ngModel)]="validUntil" type="date" class="text-input" [min]="today()" />
-        </div>
-        <div class="field">
-          <label>Notes</label>
-          <textarea [(ngModel)]="notes" class="notes-input" rows="2" placeholder="Additional instructions…"></textarea>
-        </div>
+
+      <div class="info-banner">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        Each medication below is saved separately to the patient's medication list.
       </div>
 
-      <!-- Medicines -->
-      <div class="meds-header">
-        <h3>Medicines</h3>
-        <button class="btn-add-med" (click)="addMed()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Add
-        </button>
+      <!-- Medicines list -->
+      <div class="meds-hdr">
+        <h3>💊 Medications</h3>
+        <button class="btn-add-med" (click)="addMed()">+ Add Medication</button>
       </div>
 
       <div class="med-card" *ngFor="let m of meds; let i = index">
-        <div class="med-card-header">
-          <span class="med-num">Medicine {{ i + 1 }}</span>
-          <button class="remove-btn" (click)="removeMed(i)" *ngIf="meds.length > 1">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
+        <div class="med-card-hdr">
+          <span class="med-num">Medication {{ i + 1 }}</span>
+          <button class="remove-btn" (click)="meds.splice(i,1)" *ngIf="meds.length > 1">✕</button>
         </div>
-        <div class="row-2">
-          <div class="field"><label>Name *</label><input [(ngModel)]="m.name" placeholder="Medicine name" class="text-input" /></div>
-          <div class="field"><label>Dosage *</label><input [(ngModel)]="m.dosage" placeholder="e.g. 500mg" class="text-input" /></div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Name *</label>
+            <input [(ngModel)]="m.name" class="inp" placeholder="e.g. Metformin" />
+          </div>
+          <div class="field">
+            <label>Dosage *</label>
+            <input [(ngModel)]="m.dosage" class="inp" placeholder="e.g. 500mg" />
+          </div>
         </div>
-        <div class="row-2">
+
+        <div class="field-row">
           <div class="field">
             <label>Frequency *</label>
-            <select [(ngModel)]="m.frequency" class="select-input">
-              <option value="">Select</option>
+            <select [(ngModel)]="m.frequency" class="inp">
+              <option value="">Select frequency</option>
               <option value="Once daily">Once daily</option>
               <option value="Twice daily">Twice daily</option>
               <option value="Three times daily">Three times daily</option>
               <option value="Every 8 hours">Every 8 hours</option>
+              <option value="Every 12 hours">Every 12 hours</option>
+              <option value="Weekly">Weekly</option>
               <option value="As needed">As needed</option>
             </select>
           </div>
-          <div class="field"><label>Duration *</label><input [(ngModel)]="m.duration" placeholder="e.g. 2 weeks" class="text-input" /></div>
+          <div class="field">
+            <label>Duration</label>
+            <input [(ngModel)]="m.duration" class="inp" placeholder="e.g. 30 days" />
+          </div>
         </div>
-        <div class="field"><label>Instructions</label><input [(ngModel)]="m.instructions" placeholder="e.g. Take after meals" class="text-input" /></div>
+
+        <div class="field-row">
+          <div class="field">
+            <label>Start Date</label>
+            <input type="date" [(ngModel)]="m.startDate" class="inp" />
+          </div>
+          <div class="field">
+            <label>End Date</label>
+            <input type="date" [(ngModel)]="m.endDate" class="inp" [min]="m.startDate" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Instructions</label>
+          <input [(ngModel)]="m.instructions" class="inp" placeholder="e.g. Take after meals" />
+        </div>
+
+        <!-- Per-med save status -->
+        <div class="med-saved"   *ngIf="savedIds.has(i)">✓ Saved</div>
+        <div class="med-error"   *ngIf="errIds.has(i)">✗ {{ errIds.get(i) }}</div>
+        <div class="med-saving"  *ngIf="savingIds.has(i)">
+          <span class="mspin-sm"></span> Saving...
+        </div>
       </div>
 
-      <div class="alert-success" *ngIf="saved()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
-        Prescription saved successfully!
+      <div class="alert-success" *ngIf="allSaved()">
+        ✓ All medications saved! Redirecting...
       </div>
-      <div class="alert-error" *ngIf="err()">{{ err() }}</div>
+      <div class="alert-error" *ngIf="globalErr()">{{ globalErr() }}</div>
 
-      <button class="btn-primary" (click)="save()" [disabled]="saving() || saved()">
-        <span class="mini-spinner" *ngIf="saving()"></span>
-        {{ saving() ? 'Saving...' : saved() ? 'Saved!' : 'Save Prescription' }}
+      <button class="btn-primary" (click)="save()" [disabled]="saving() || allSaved()">
+        <span class="mspin" *ngIf="saving()"></span>
+        {{ saving() ? 'Saving...' : allSaved() ? '✓ Saved!' : 'Save Prescription' }}
       </button>
     </div>
   `,
   styles: [`
-    .page { padding:24px; max-width:900px; }
-    @media (max-width:768px) { .page { padding:16px; } }
-    .top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-    .top-bar h1 { font-size:18px; font-weight:700; color:#111; }
-    .back-btn { background:none; border:none; cursor:pointer; color:#555; padding:4px; display:flex; }
-    .form-card { background:#fff; border-radius:14px; padding:18px; margin-bottom:14px; box-shadow:0 1px 8px rgba(0,0,0,0.05); }
-    .field { margin-bottom:12px; }
-    .field label { display:block; font-size:13px; font-weight:600; color:#111; margin-bottom:5px; }
-    .text-input  { width:100%; padding:10px 12px; border:1.5px solid #e8e8e8; border-radius:10px; font-size:14px; font-family:'Cairo',sans-serif; outline:none; box-sizing:border-box; }
-    .text-input:focus { border-color:#2D4A8A; }
-    .select-input { width:100%; padding:10px 12px; border:1.5px solid #e8e8e8; border-radius:10px; font-size:14px; font-family:'Cairo',sans-serif; outline:none; appearance:none; background:#fff; box-sizing:border-box; }
-    .notes-input { width:100%; padding:10px 12px; border:1.5px solid #e8e8e8; border-radius:10px; font-size:14px; font-family:'Cairo',sans-serif; outline:none; resize:none; box-sizing:border-box; }
-    .row-2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    .meds-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-    .meds-header h3 { font-size:16px; font-weight:700; color:#111; }
-    .btn-add-med { display:flex; align-items:center; gap:4px; background:#E6F1FB; color:#185FA5; border:none; border-radius:8px; padding:7px 12px; font-size:13px; font-weight:600; cursor:pointer; }
-    .med-card { background:#fff; border-radius:12px; padding:14px; margin-bottom:10px; box-shadow:0 1px 8px rgba(0,0,0,0.05); border-left:3px solid #2D4A8A; }
-    .med-card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-    .med-num { font-size:13px; font-weight:600; color:#2D4A8A; }
-    .remove-btn { background:none; border:none; cursor:pointer; color:#D84040; padding:0; display:flex; }
-    .alert-success { display:flex; align-items:center; gap:8px; background:#E1F5EE; color:#0F6E56; border-radius:10px; padding:12px 14px; margin-bottom:12px; font-size:14px; font-weight:600; }
-    .alert-error { background:#FEF2F2; color:#D84040; border-radius:10px; padding:12px 14px; margin-bottom:12px; font-size:13px; }
-    .btn-primary { width:100%; padding:14px; background:#2D4A8A; color:#fff; border:none; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; font-family:'Cairo',sans-serif; }
-    .btn-primary:disabled { opacity:0.55; cursor:not-allowed; }
-    .mini-spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,0.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; vertical-align:middle; margin-right:6px; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-  `],
+    *{box-sizing:border-box;margin:0;padding:0;}
+    .page{padding:24px;max-width:720px;font-family:'Cairo','Segoe UI',sans-serif;}
+    @media(max-width:768px){.page{padding:14px;}}
+    .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+    .top-bar h1{font-size:20px;font-weight:800;color:#111;}
+    .back-btn{background:none;border:none;cursor:pointer;color:#555;padding:4px;display:flex;}
+    .info-banner{display:flex;align-items:center;gap:8px;background:#E6F1FB;color:#185FA5;border-radius:10px;padding:10px 14px;font-size:13px;font-weight:600;margin-bottom:16px;}
+    .meds-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+    .meds-hdr h3{font-size:16px;font-weight:700;color:#111;}
+    .btn-add-med{background:#E6F1FB;color:#185FA5;border:none;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+    .med-card{background:#fff;border-radius:14px;padding:16px;margin-bottom:12px;box-shadow:0 1px 8px rgba(0,0,0,.07);border-left:3px solid #2D4A8A;position:relative;}
+    .med-card-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+    .med-num{font-size:13px;font-weight:700;color:#2D4A8A;}
+    .remove-btn{background:none;border:none;cursor:pointer;color:#D84040;font-size:16px;}
+    .field{margin-bottom:10px;}
+    .field label{display:block;font-size:11px;font-weight:700;color:#555;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px;}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .inp{width:100%;padding:9px 12px;border:1.5px solid #e8e8e8;border-radius:10px;font-size:14px;font-family:inherit;outline:none;}
+    .inp:focus{border-color:#2D4A8A;}
+    .med-saved{font-size:12px;font-weight:700;color:#0F6E56;background:#E1F5EE;padding:4px 10px;border-radius:8px;display:inline-block;margin-top:4px;}
+    .med-error{font-size:12px;color:#D84040;background:#FEF2F2;padding:4px 10px;border-radius:8px;display:inline-block;margin-top:4px;word-break:break-all;}
+    .med-saving{font-size:12px;color:#888;display:flex;align-items:center;gap:6px;margin-top:4px;}
+    .mspin-sm{width:12px;height:12px;border:2px solid #e0e0e0;border-top-color:#2D4A8A;border-radius:50%;animation:spin .6s linear infinite;display:inline-block;}
+    .alert-success{background:#E1F5EE;color:#0F6E56;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:14px;font-weight:700;}
+    .alert-error{background:#FEF2F2;color:#D84040;border-radius:10px;padding:12px 14px;margin-bottom:12px;font-size:13px;word-break:break-all;}
+    .btn-primary{width:100%;padding:14px;background:#2D4A8A;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:8px;}
+    .btn-primary:disabled{opacity:.55;cursor:not-allowed;}
+    .mspin{width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+  `]
 })
 export class WritePrescriptionComponent implements OnInit {
-  private svc   = inject(DoctorService);
-  goBack(): void { window.history.back(); }
+  private http  = inject(HttpClient);
   private route = inject(ActivatedRoute);
   private nav   = inject(Router);
 
-  saving = signal(false);
-  saved  = signal(false);
-  err    = signal('');
+  saving    = signal(false);
+  globalErr = signal('');
 
-  diagnosis  = '';
-  validUntil = '';
-  notes      = '';
-  patientId  = '';
-  meds: MedLine[] = [{ name:'', dosage:'', frequency:'', duration:'', instructions:'' }];
+  patientId = '';
+  meds: MedLine[] = [this.emptyMed()];
 
-  ngOnInit(): void { this.patientId = this.route.snapshot.paramMap.get('patientId')!; }
+  // Per-medication save state
+  savedIds  = new Set<number>();
+  savingIds = new Set<number>();
+  errIds    = new Map<number, string>();
 
-  addMed(): void { this.meds.push({ name:'', dosage:'', frequency:'', duration:'', instructions:'' }); }
-  removeMed(i: number): void { this.meds.splice(i, 1); }
-  today(): string { return new Date().toISOString().split('T')[0]; }
+  ngOnInit(): void {
+    this.patientId = this.route.snapshot.paramMap.get('patientId') ?? '';
+  }
+
+  addMed(): void { this.meds.push(this.emptyMed()); }
+  goBack(): void { window.history.back(); }
+  allSaved(): boolean { return this.savedIds.size === this.meds.length && this.meds.length > 0; }
 
   save(): void {
-    if (!this.diagnosis || this.meds.some(m => !m.name || !m.dosage || !m.frequency || !m.duration)) {
-      this.err.set('Please fill in all required fields.'); return;
-    }
-    this.saving.set(true); this.err.set('');
-    const dto: CreatePrescriptionDto = {
-      patientId: this.patientId, diagnosis: this.diagnosis,
-      medicines: this.meds.map(m => ({ name: m.name, dosage: m.dosage, frequency: m.frequency, duration: m.duration, instructions: m.instructions || undefined })),
-      notes: this.notes || undefined, validUntil: this.validUntil || undefined,
-    };
-    this.svc.createPrescription(dto).subscribe({
-      next: (res: any) => {
-        this.saving.set(false);
-        if (res?.success === false) console.warn('[WritePrescription]', res.message, 'DTO:', dto);
-        this.saved.set(true);
-        setTimeout(() => this.nav.navigate(['/doctor/patients', this.patientId, 'prescriptions']), 1500);
-      },
-      error: () => { this.saving.set(false); this.err.set('Failed to save. Please try again.'); },
+    // Validate
+    const invalid = this.meds.find((m, i) => !this.savedIds.has(i) && (!m.name.trim() || !m.dosage.trim() || !m.frequency));
+    if (invalid) { this.globalErr.set('Fill Name, Dosage and Frequency for all medications.'); return; }
+    if (!this.patientId) { this.globalErr.set('Patient ID missing.'); return; }
+
+    this.saving.set(true);
+    this.globalErr.set('');
+
+    // Save each medication separately via POST /api/Medication/add
+    const promises = this.meds.map((m, i) => {
+      if (this.savedIds.has(i)) return Promise.resolve();  // skip already saved
+      this.savingIds.add(i);
+
+      const body: any = {
+        patientId:    this.patientId,
+        name:         m.name.trim(),
+        dosage:       m.dosage.trim(),
+        frequency:    m.frequency,
+        duration:     m.duration.trim() || '',
+        instructions: m.instructions.trim() || '',
+      };
+      if (m.startDate) body.startDate = new Date(m.startDate + 'T00:00:00').toISOString();
+      if (m.endDate)   body.endDate   = new Date(m.endDate   + 'T00:00:00').toISOString();
+
+      console.log(`[Prescription] POST /api/Medication/add med[${i}]`, body);
+
+      return new Promise<void>((resolve) => {
+        this.http.post<any>(`${environment.apiUrl}/Medication/add`, body).subscribe({
+          next: () => {
+            this.savingIds.delete(i);
+            this.savedIds.add(i);
+            this.errIds.delete(i);
+            resolve();
+          },
+          error: (e: HttpErrorResponse) => {
+            this.savingIds.delete(i);
+            const errs = e?.error?.errors;
+            const msg = errs
+              ? Object.entries(errs).map(([f,m]) => `${f}: ${(m as string[]).join(', ')}`).join(' | ')
+              : e?.error?.message ?? e?.error?.title ?? `HTTP ${e.status}`;
+            this.errIds.set(i, msg);
+            resolve();  // don't reject — let others continue
+          }
+        });
+      });
     });
+
+    Promise.all(promises).then(() => {
+      this.saving.set(false);
+      if (this.errIds.size > 0) {
+        this.globalErr.set(`${this.errIds.size} medication(s) failed to save. See errors above.`);
+      }
+      if (this.allSaved()) {
+        setTimeout(() => this.nav.navigate(['/doctor/patients', this.patientId, 'prescriptions']), 1500);
+      }
+    });
+  }
+
+  private emptyMed(): MedLine {
+    const today = new Date().toISOString().split('T')[0];
+    const end   = new Date(); end.setDate(end.getDate() + 30);
+    return { name:'', dosage:'', frequency:'', duration:'30 days', instructions:'', startDate: today, endDate: end.toISOString().split('T')[0] };
   }
 }

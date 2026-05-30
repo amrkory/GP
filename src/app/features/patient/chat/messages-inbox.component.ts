@@ -1,10 +1,10 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink }   from '@angular/router';
-import { ChatService }  from '../../../../core/services/chat.service';
+import { ChatService }  from '../../../core/services/chat.service';
 
 @Component({
-  selector: 'app-chat-list',
+  selector: 'app-messages-inbox',
   standalone: true,
   imports: [CommonModule, RouterLink],
   template: `
@@ -14,28 +14,26 @@ import { ChatService }  from '../../../../core/services/chat.service';
     <span class="badge" *ngIf="unread()>0">{{ unread() }}</span>
   </div>
 
-  <!-- Skeleton -->
   <div class="sk-list" *ngIf="loading()">
-    <div class="sk-row" *ngFor="let i of [1,2,3,4]">
+    <div class="sk-row" *ngFor="let i of [1,2,3]">
       <div class="sk-av"></div>
-      <div class="sk-lines"><div class="sk-l w50"></div><div class="sk-l w70 mt5"></div></div>
+      <div class="sk-lines"><div class="sk-l w50"></div><div class="sk-l w70"></div></div>
     </div>
   </div>
 
-  <!-- Empty -->
   <div class="empty" *ngIf="!loading() && list().length===0">
     <div class="eico"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="1.5">
       <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
     <p>No conversations yet</p>
+    <p class="esub">Book an appointment to message your doctor</p>
   </div>
 
-  <!-- List -->
   <div class="clist" *ngIf="!loading() && list().length>0">
-    <a class="crow" *ngFor="let c of list()" [routerLink]="['/doctor/chat', c.id]">
+    <a class="crow" *ngFor="let c of list()" [routerLink]="['/patient/messages', c.id]">
       <div class="av" [style.background]="clr(c.name)">{{ ini(c.name) }}</div>
       <div class="ci">
         <div class="ctop">
-          <span class="cname">{{ c.name }}</span>
+          <span class="cname">Dr. {{ c.name }}</span>
           <span class="ctime">{{ fmtTime(c.at) }}</span>
         </div>
         <div class="cbot">
@@ -65,10 +63,10 @@ import { ChatService }  from '../../../../core/services/chat.service';
     .sk-av{width:46px;height:46px;border-radius:50%;background:#F0F2F5;flex-shrink:0;animation:p 1.4s ease-in-out infinite;}
     .sk-lines{flex:1;display:flex;flex-direction:column;gap:7px;}
     .sk-l{height:11px;border-radius:6px;background:#F0F2F5;animation:p 1.4s ease-in-out infinite;}
-    .sk-l.w50{width:50%;}.sk-l.w70{width:70%;}.mt5{margin-top:0;}
+    .sk-l.w50{width:50%;}.sk-l.w70{width:70%;}
     .empty{display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px;text-align:center;}
     .eico{width:60px;height:60px;background:#F4F6FA;border-radius:50%;display:flex;align-items:center;justify-content:center;}
-    .empty p{font-size:14px;color:#9CA3AF;}
+    .empty p{font-size:14px;color:#9CA3AF;}.esub{font-size:12px;color:#C9CDD4;}
     .clist{background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.05);}
     @media(max-width:768px){.clist{border-radius:0;}}
     .crow{display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:1px solid #F8F9FC;text-decoration:none;color:inherit;transition:background .1s;}
@@ -84,7 +82,7 @@ import { ChatService }  from '../../../../core/services/chat.service';
     .ubadge{background:#D84040;color:#fff;font-size:11px;font-weight:700;min-width:20px;height:20px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 5px;flex-shrink:0;}
   `]
 })
-export class ChatListComponent implements OnInit {
+export class MessagesInboxComponent implements OnInit {
   private svc = inject(ChatService);
   loading = signal(true);
   list    = signal<{id:string;name:string;last:string;at:string;unread:number}[]>([]);
@@ -92,38 +90,33 @@ export class ChatListComponent implements OnInit {
 
   ngOnInit(): void {
     this.svc.getConversations().subscribe({
-      next: (res: any) => {
-        const raw: any[] = Array.isArray(res) ? res
-          : res?.data?.items ?? res?.data ?? [];
-        this.list.set(raw.map((c: any) => ({
-          id:     c.participantId     ?? c.otherUserId ?? c.userId ?? c.id ?? '',
-          name:   c.participantName   ?? c.otherUserName ?? c.userName ?? c.name ?? 'Unknown',
-          // lastMessage is a string per ChatConversation model
-          last:   typeof c.lastMessage === 'string' ? c.lastMessage
-                  : (c.lastMessage as any)?.body ?? (c.lastMessage as any)?.content
-                  ?? c.lastMessageContent ?? '',
-          at:     c.lastMessageAt ?? c.lastSentAt ?? c.sentAt ?? '',
-          unread: c.unreadCount   ?? c.unread ?? 0,
+      next: (res:any) => {
+        const raw:any[] = Array.isArray(res)?res:res?.data?.items??res?.data??[];
+        this.list.set(raw.map((c:any)=>({
+          id:     c.participantId??c.otherUserId??c.userId??c.id??'',
+          name:   c.participantName??c.otherUserName??c.userName??c.name??'Doctor',
+          last:   typeof c.lastMessage==='string'?c.lastMessage
+                  :(c.lastMessage as any)?.body??(c.lastMessage as any)?.content
+                  ??c.lastMessageContent??'',
+          at:     c.lastMessageAt??c.lastSentAt??c.sentAt??'',
+          unread: c.unreadCount??c.unread??0,
         })));
         this.loading.set(false);
       },
-      error: () => this.loading.set(false)
+      error:()=>this.loading.set(false)
     });
   }
 
-  private C = ['#2D4A8A','#0F6E56','#D84040','#7C3AED','#0891B2'];
-  clr(n: string) { return this.C[(n?.charCodeAt(0)||0) % this.C.length]; }
-  ini(n: string) {
-    const p=(n||'').trim().split(' ');
-    return ((p[0]?.[0]??'')+(p[1]?.[0]??'')).toUpperCase()||'?';
-  }
-  fmtTime(iso: string) {
-    if (!iso) return '';
-    const d=new Date(iso), now=new Date(), diff=now.getTime()-d.getTime();
-    if (diff<60000)     return 'now';
-    if (diff<3600000)   return Math.floor(diff/60000)+'m';
-    if (diff<86400000)  return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    if (diff<604800000) return d.toLocaleDateString([],{weekday:'short'});
+  private C=['#2D4A8A','#0F6E56','#D84040','#7C3AED','#0891B2'];
+  clr(n:string){return this.C[(n?.charCodeAt(0)||0)%this.C.length];}
+  ini(n:string){const p=(n||'').trim().split(' ');return((p[0]?.[0]??'')+(p[1]?.[0]??'')).toUpperCase()||'?';}
+  fmtTime(iso:string){
+    if(!iso)return'';
+    const d=new Date(iso),now=new Date(),diff=now.getTime()-d.getTime();
+    if(diff<60000)return'now';
+    if(diff<3600000)return Math.floor(diff/60000)+'m';
+    if(diff<86400000)return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    if(diff<604800000)return d.toLocaleDateString([],{weekday:'short'});
     return d.toLocaleDateString([],{month:'short',day:'numeric'});
   }
 }

@@ -1,6 +1,6 @@
 export const environment = {
   production: false,
-  apiUrl:     'http://wateen.runasp.net/api',
-  socketUrl:  'http://wateen.runasp.net',
+  apiUrl:     'https://wateen.runasp.net/api',
+  socketUrl:  'https://wateen.runasp.net',
   calendlyApiKey: '',
 };

@@ -5,11 +5,11 @@ import {
 } from '@angular/core';
 import { CommonModule }  from '@angular/common';
 import { FormsModule }   from '@angular/forms';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription }  from 'rxjs';
-import { ChatService }   from '../../../../core/services/chat.service';
-import { SignalRService }from '../../../../core/services/signalr.service';
-import { AuthService }   from '../../../../core/services/auth.service';
+import { ChatService }   from '../../../core/services/chat.service';
+import { SignalRService }from '../../../core/services/signalr.service';
+import { AuthService }   from '../../../core/services/auth.service';
 
 interface Msg {
   id: string; senderId: string; receiverId: string;
@@ -35,13 +35,13 @@ function toMsg(raw: any): Msg {
 }
 
 @Component({
-  selector: 'app-doctor-chat-room',
+  selector: 'app-messages-room',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   template: `
 <div class="cw">
   <div class="hdr">
-    <button class="back" (click)="router.navigate(['/doctor/chat'])">
+    <button class="back" (click)="router.navigate(['/patient/messages'])">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polyline points="15 18 9 12 15 6"/>
       </svg>
@@ -49,14 +49,14 @@ function toMsg(raw: any): Msg {
     <div class="hmid">
       <div class="av" [style.background]="clr(pName())">{{ ini(pName()) }}</div>
       <div>
-        <div class="hname">{{ pName() || 'Patient' }}</div>
+        <div class="hname">{{ pName() || '...' }}</div>
         <div class="hsub">
           <span class="dot" [class.on]="online()"></span>
-          {{ online() ? 'Online' : 'Patient' }}
+          {{ online() ? 'Online' : 'Doctor' }}
         </div>
       </div>
     </div>
-    <a [routerLink]="['/doctor/patients', otherId]" class="vpbtn">Profile</a>
+
   </div>
 
   <div class="msgs" #msgBox>
@@ -65,7 +65,7 @@ function toMsg(raw: any): Msg {
       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D0D5DD" stroke-width="1.5">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
-      <p>No messages yet. Start the conversation.</p>
+      <p>No messages yet. Say hello to your doctor!</p>
     </div>
 
     <ng-container *ngFor="let g of grouped()">
@@ -128,7 +128,7 @@ function toMsg(raw: any): Msg {
     .vpbtn{padding:6px 12px;border:1.5px solid #E8ECF0;border-radius:10px;text-decoration:none;font-size:12px;font-weight:700;color:#374151;white-space:nowrap;flex-shrink:0;}
     .msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:2px;}
     .sp-wrap{display:flex;justify-content:center;padding:32px;}
-    .sp{width:22px;height:22px;border:2.5px solid #E8ECF0;border-top-color:#2D4A8A;border-radius:50%;animation:sp .7s linear infinite;}
+    .sp{width:22px;height:22px;border:2.5px solid #E8ECF0;border-top-color:#D84040;border-radius:50%;animation:sp .7s linear infinite;}
     @keyframes sp{to{transform:rotate(360deg);}}
     .ec{display:flex;flex-direction:column;align-items:center;gap:8px;padding:48px;color:#9CA3AF;font-size:14px;}
     .dsep{display:flex;align-items:center;gap:10px;margin:10px 0 6px;font-size:11px;color:#9CA3AF;}
@@ -139,7 +139,7 @@ function toMsg(raw: any): Msg {
     .mav{width:28px;height:28px;border-radius:50%;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
     .bw{max-width:70%;}.bw.mine{margin-left:auto;}
     .b{padding:9px 13px;border-radius:16px;word-break:break-word;border-bottom-left-radius:3px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.07);}
-    .b.mine{background:#2D4A8A;border-bottom-left-radius:16px;border-bottom-right-radius:3px;}
+    .b.mine{background:#D84040;border-bottom-left-radius:16px;border-bottom-right-radius:3px;}
     .b.tmp{opacity:.65;}
     .b p{font-size:14px;line-height:1.5;white-space:pre-wrap;color:#111;}
     .b.mine p{color:#fff;}
@@ -150,14 +150,14 @@ function toMsg(raw: any): Msg {
     .ibar{display:flex;align-items:center;gap:10px;padding:10px 16px 14px;background:#fff;border-top:1px solid #F0F2F5;flex-shrink:0;}
     @media(max-width:768px){.ibar{padding:8px 12px 12px;}}
     .iw{flex:1;background:#F4F6FA;border:1.5px solid #E8ECF0;border-radius:22px;display:flex;align-items:center;transition:border-color .15s;}
-    .iw.foc{border-color:#2D4A8A;background:#fff;}
+    .iw.foc{border-color:#D84040;background:#fff;}
     .ci{flex:1;padding:10px 16px;border:none;background:transparent;font-size:14px;font-family:inherit;outline:none;color:#111;}
-    .sb{width:42px;height:42px;border-radius:50%;background:#2D4A8A;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+    .sb{width:42px;height:42px;border-radius:50%;background:#D84040;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
     .sb:hover:not(:disabled){background:#1E3A6E;}
     .sb:disabled{opacity:.4;cursor:not-allowed;}
   `]
 })
-export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
+export class MessagesRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('msgBox') msgBox!: ElementRef<HTMLElement>;
   @ViewChild('inp')    inp!:    ElementRef<HTMLInputElement>;
 
@@ -216,36 +216,36 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
   private resolveMyId(msgs: Msg[]): void {
     // 1. JWT
     const jwt = this.auth.userId();
-    if (jwt) { this.myId = jwt; console.log('[Chat] myId JWT:', jwt); return; }
+    if (jwt) { this.myId = jwt; console.log('[PatChat] myId JWT:', jwt); return; }
 
     // 2. receiverId of messages sent BY other person → that's me
     const theirMsg = msgs.find(m => m.senderId === this.otherId && m.receiverId);
     if (theirMsg?.receiverId) {
       this.myId = theirMsg.receiverId;
-      console.log('[Chat] myId from receiverId:', this.myId); return;
+      console.log('[PatChat] myId from receiverId:', this.myId); return;
     }
 
     // 3. senderId of messages sent BY me (senderId !== otherId)
     const myMsg = msgs.find(m => m.senderId && m.senderId !== this.otherId);
     if (myMsg?.senderId) {
       this.myId = myMsg.senderId;
-      console.log('[Chat] myId from senderId:', this.myId); return;
+      console.log('[PatChat] myId from senderId:', this.myId); return;
     }
 
-    console.warn('[Chat] myId unknown — no history, JWT empty');
+    console.warn('[PatChat] myId unknown — no history, JWT empty');
   }
 
   ngOnInit(): void {
-    this.otherId = this.route.snapshot.paramMap.get('patientId') ?? '';
+    this.otherId = this.route.snapshot.paramMap.get('doctorId') ?? '';
     this.myId    = this.auth.userId();
-    console.log('[Chat] init — otherId:', this.otherId, 'myId:', this.myId || 'pending');
+    console.log('[PatChat] init — otherId:', this.otherId, 'myId:', this.myId || 'pending');
 
     // Load name
     this.chatSvc.getConversations().subscribe({
       next: (res: any) => {
         const list: any[] = Array.isArray(res)?res:res?.data?.items??res?.data??[];
         const c = list.find(x => (x.participantId??x.otherUserId??x.userId)===this.otherId);
-        if (c) this.pName.set(c.participantName??c.otherUserName??'Patient');
+        if (c) this.pName.set(c.participantName??c.otherUserName??'Doctor');
       }
     });
 
@@ -256,7 +256,7 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
         const parsed = raw.map(toMsg).sort((a,b)=>
           new Date(a.sentAt).getTime()-new Date(b.sentAt).getTime());
         this.resolveMyId(parsed);
-        console.log('[Chat] history:', parsed.length, 'myId:', this.myId);
+        console.log('[PatChat] history:', parsed.length, 'myId:', this.myId);
         this.msgs.set(parsed);
         this.loading.set(false);
         this.sp = true;
@@ -276,11 +276,11 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
         // Resolve myId from echo if still unknown
         if (!this.myId && rid && rid !== this.otherId) {
           this.myId = rid;
-          console.log('[Chat] myId from echo receiverId:', this.myId);
+          console.log('[PatChat] myId from echo receiverId:', this.myId);
         }
         if (!this.myId && sid && sid !== this.otherId) {
           this.myId = sid;
-          console.log('[Chat] myId from echo senderId:', this.myId);
+          console.log('[PatChat] myId from echo senderId:', this.myId);
         }
 
         // Filter to this conversation only

@@ -1,90 +1,94 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AppointmentService {
-  needsRefresh = false; // set true after cancel/reschedule to force list reload
+  needsRefresh = false;
   private api = environment.apiUrl;
-  constructor(private http: HttpClient) {}
 
-  // ── PATIENT ────────────────────────────────────────────────────────────────
-  /** GET /api/Appointment/Patient */
-  getMyAppointments(pageNumber = 1, pageSize = 50): Observable<any> {
-    return this.http.get(`${this.api}/Appointment/Patient`, {
-      params: { pageNumber, pageSize }
+  // ── LOCAL OVERRIDE STORE ───────────────────────────────────────────────────
+  // Because the backend cancel endpoint returns 200 but doesn't always update
+  // the status immediately, we track overrides client-side.
+  private localStatus = new Map<string, string>(); // id → 'Cancelled' | 'Completed' etc.
+
+  setLocalStatus(id: string, status: string): void {
+    this.localStatus.set(String(id), status);
+  }
+
+  // Apply local overrides to appointment list
+  applyOverrides(list: any[]): any[] {
+    if (this.localStatus.size === 0) return list;
+    return list.map(a => {
+      const override = this.localStatus.get(String(a.id));
+      return override ? { ...a, status: override } : a;
     });
   }
 
-  /** POST /api/Appointment/book */
-  book(dto: {
-    doctorId: string;
-    appointmentTime: string;  // ISO datetime
-    type: 'video' | 'in_person' | 'message';
-    notes?: string;
-  }): Observable<any> {
+  constructor(private http: HttpClient) {}
+
+  // ── PATIENT ────────────────────────────────────────────────────────────────
+  getMyAppointments(pageNumber = 1, pageSize = 50): Observable<any> {
+    return this.http.get(`${this.api}/Appointment/Patient`, {
+      params: { pageNumber: String(pageNumber), pageSize: String(pageSize) }
+    });
+  }
+
+  book(dto: { doctorId: string; appointmentTime: string; type: string; notes?: string }): Observable<any> {
     return this.http.post(`${this.api}/Appointment/book`, dto);
   }
 
-  /** PUT /api/Appointment/cancel/{appointmentId} — patient cancels */
-  cancelByPatient(appointmentId: string): Observable<any> {
-    return this.http.put(`${this.api}/Appointment/cancel/${appointmentId}`, {});
+  cancelByPatient(appointmentId: string, reason?: string): Observable<any> {
+    const body = reason ? { cancellationReason: reason } : {};
+    return this.http.put(`${this.api}/Appointment/cancel/${appointmentId}`, body).pipe(
+      tap(() => {
+        // Always mark as cancelled locally regardless of what backend returns
+        this.setLocalStatus(appointmentId, 'Cancelled');
+        this.needsRefresh = true;
+      })
+    );
   }
 
-  /** PUT /api/Appointment/reschedule/{appointmentId} */
   reschedule(appointmentId: string, newAppointmentTime: string, rescheduleReason = 'Patient requested'): Observable<any> {
     return this.http.put(`${this.api}/Appointment/reschedule/${appointmentId}`, {
-      newAppointmentTime,
-      rescheduleReason,
+      newAppointmentTime, rescheduleReason,
     });
   }
 
   // ── DOCTOR ─────────────────────────────────────────────────────────────────
-  /** GET /api/Appointment/doctor */
   getDoctorAppointments(pageNumber = 1, pageSize = 50): Observable<any> {
     return this.http.get(`${this.api}/Appointment/doctor`, {
-      params: { pageNumber, pageSize }
+      params: { pageNumber: String(pageNumber), pageSize: String(pageSize) }
     });
   }
 
-  /** PUT /api/Appointment/respond/{appointmentId}?accept=true|false */
   respond(appointmentId: string, accept: boolean): Observable<any> {
     return this.http.put(`${this.api}/Appointment/respond/${appointmentId}`, null, {
       params: { accept: accept.toString() }
     });
   }
 
-  /** PUT /api/Appointment/doctor/cancel/{appointmentId} — doctor cancels */
   cancelByDoctor(appointmentId: string): Observable<any> {
     return this.http.put(`${this.api}/Appointment/doctor/cancel/${appointmentId}`, {});
   }
 
-  /** PUT /api/Appointment/complete/{appointmentId} */
   complete(appointmentId: string): Observable<any> {
     return this.http.put(`${this.api}/Appointment/complete/${appointmentId}`, {});
   }
 
-  // ── BOOK APPOINTMENT HELPERS ───────────────────────────────────────────────
-  /** GET /api/Appointment/Doctors — doctors list for booking */
   getDoctors(pageNumber = 1, pageSize = 50): Observable<any> {
     return this.http.get(`${this.api}/Appointment/Doctors`, {
-      params: { pageNumber, pageSize }
+      params: { pageNumber: String(pageNumber), pageSize: String(pageSize) }
     });
   }
 
-  // ── CALENDLY SLOTS ──────────────────────────────────────────────────────────
-  /** GET /api/Calendly/connect — initiate Calendly OAuth */
-  connectCalendly(): Observable<any> {
-    return this.http.get<any>(`${this.api}/Calendly/connect`);
-  }
+  // ── CALENDLY ───────────────────────────────────────────────────────────────
+  connectCalendly(): Observable<any> { return this.http.get<any>(`${this.api}/Calendly/connect`); }
+  getDoctorOwnEventTypes(): Observable<any> { return this.http.get<any>(`${this.api}/Calendly/doctor/event-types`); }
+  getDoctorEventTypes(): Observable<any> { return this.http.get<any>(`${this.api}/Calendly/doctor/event-types`); }
+  getEventTypes(doctorId: string): Observable<any> { return this.http.get<any>(`${this.api}/Calendly/doctor/${doctorId}/event-types`); }
 
-  /** GET /api/Calendly/doctor/event-types — for logged-in doctor */
-  getDoctorOwnEventTypes(): Observable<any> {
-    return this.http.get<any>(`${this.api}/Calendly/doctor/event-types`);
-  }
-
-  /** GET /api/Calendly/slots/{doctorId}?eventTypeUri=...&from=...&to=... */
   getSlots(doctorId: string, date?: string, eventTypeUri?: string): Observable<any> {
     const params: any = {};
     if (date) {
@@ -96,27 +100,9 @@ export class AppointmentService {
     return this.http.get<any>(`${this.api}/Calendly/slots/${doctorId}`, { params });
   }
 
-  /** GET /api/Calendly/doctor/{doctorId}/event-types */
-  getEventTypes(doctorId: string): Observable<any> {
-    return this.http.get<any>(`${this.api}/Calendly/doctor/${doctorId}/event-types`);
-  }
-
-  /** GET /api/Calendly/doctor/event-types — for logged-in doctor */
-  getDoctorEventTypes(): Observable<any> {
-    return this.http.get<any>(`${this.api}/Calendly/doctor/event-types`);
-  }
-
-  // ── LEGACY COMPAT — keep old method names used in components ───────────────
-  getById(id: string): Observable<any> {
-    // No single-appointment endpoint in backend — use list and filter on client
-    return this.getMyAppointments();
-  }
-
-  cancel(id: string, reason?: string): Observable<any> {
-    return this.cancelByPatient(id);
-  }
-
-  confirm(id: string): Observable<any> {
-    return this.respond(id, true);
-  }
+  // ── LEGACY ALIASES ──────────────────────────────────────────────────────────
+  getById(id: string): Observable<any> { return this.getMyAppointments(); }
+  cancel(id: string, reason?: string): Observable<any> { return this.cancelByPatient(id, reason); }
+  confirm(id: string): Observable<any> { return this.respond(id, true); }
+  getAppointments(pageNumber = 1, pageSize = 50): Observable<any> { return this.getDoctorAppointments(pageNumber, pageSize); }
 }

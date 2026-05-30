@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal, HostListener } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive }       from '@angular/router';
 import { CommonModule }        from '@angular/common';
+import { ProfileService } from '../../../core/services/profile.service';
 import { AuthService }         from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 
@@ -24,7 +25,10 @@ import { NotificationService } from '../../../core/services/notification.service
         </div>
 
         <div class="sidebar-user">
-          <div class="user-avatar">{{ initials() }}</div>
+          <a routerLink="/doctor/profile" class="av-link">
+            <img *ngIf="avatarUrl()" [src]="avatarUrl()" class="user-avatar-img" alt="" />
+            <div *ngIf="!avatarUrl()" class="user-avatar">{{ initials() }}</div>
+          </a>
           <div class="user-info">
             <div class="user-name">Dr. {{ userName() }}</div>
             <div class="user-role">Physician</div>
@@ -90,7 +94,10 @@ import { NotificationService } from '../../../core/services/notification.service
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
               <span class="notif-dot" *ngIf="unreadCount() > 0"></span>
             </button>
-            <button class="hdr-avatar" (click)="logout()">{{ initials() }}</button>
+            <a routerLink="/doctor/profile" class="hdr-avatar-link">
+              <img *ngIf="avatarUrl()" [src]="avatarUrl()" class="hdr-avatar-img" alt="" />
+              <div *ngIf="!avatarUrl()" class="hdr-avatar">{{ initials() }}</div>
+            </a>
           </div>
         </header>
 
@@ -116,7 +123,11 @@ import { NotificationService } from '../../../core/services/notification.service
     .sidebar-collapsed .brand-name, .sidebar-collapsed .role-chip { display: none; }
 
     .sidebar-user { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .av-link { text-decoration:none; flex-shrink:0; }
     .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: #2D4A8A; color: #fff; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .user-avatar-img { width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,.2); flex-shrink:0; }
+    .hdr-avatar-link { text-decoration:none; }
+    .hdr-avatar-img { width:34px; height:34px; border-radius:50%; object-fit:cover; border:2px solid #F0F2F5; }
     .user-info { overflow: hidden; }
     .user-name { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .user-role { font-size: 11px; color: rgba(255,255,255,0.5); }
@@ -171,6 +182,9 @@ export class DoctorShellComponent implements OnInit {
 
   unreadCount() { return this.notifService.unreadCount(); }
 
+  avatarUrl   = signal('');
+  private profSvc = inject(ProfileService);
+
   initials(): string {
     const u = this.auth.currentUser() as any;
     const f = u?.given_name ?? u?.firstName ?? u?.name?.split(' ')?.[0] ?? 'D';
@@ -199,5 +213,14 @@ export class DoctorShellComponent implements OnInit {
   @HostListener('window:keydown.escape')
   onEsc(): void { this.mobileOpen = false; }
 
-  ngOnInit(): void { this.notifService.load().subscribe(); }
+  ngOnInit(): void {
+    this.notifService.load().subscribe();
+    this.profSvc.getDoctorData().subscribe({
+      next: (res: any) => {
+        const p = res?.data ?? res;
+        const url = p?.profilePictureUrl ?? p?.avatarUrl ?? p?.photoUrl ?? '';
+        if (url) this.avatarUrl.set(url);
+      }, error: () => {}
+    });
+  }
 }

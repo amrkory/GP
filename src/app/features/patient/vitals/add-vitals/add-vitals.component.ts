@@ -1,194 +1,237 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule }    from '@angular/common';
-import { FormsModule }     from '@angular/forms';
-import { Router }          from '@angular/router';
-import { ProfileService }  from '../../../../core/services/profile.service';
+import { Component, signal, inject } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule }  from '@angular/forms';
+import { Router }       from '@angular/router';
+import { HttpClient }   from '@angular/common/http';
+import { environment }  from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-add-vitals',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="page">
-      <div class="top-bar">
-        <button class="back-btn" (click)="router.navigate(['/patient/vitals'])">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-        </button>
-        <h1>Add / Update Vitals</h1>
-        <span></span>
-      </div>
-      <p class="hint">Enter your latest readings. Only fill the ones you have measured today.</p>
+<div class="page">
+  <div class="top-bar">
+    <button class="back-btn" (click)="router.navigate(['/patient/vitals'])">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <h1>Add Vitals</h1>
+    <span></span>
+  </div>
+  <p class="hint">Fill in only the readings you measured. Leave others blank.</p>
 
-      <!-- Blood Pressure -->
-      <div class="section-card">
-        <div class="section-hdr">
-          <div class="section-icon bp">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D84040" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          </div>
-          <div>
-            <div class="section-title">Blood Pressure</div>
-            <div class="section-sub">Measure with a blood pressure cuff</div>
-          </div>
-        </div>
-        <div class="field-row">
-          <div class="field">
-            <label>Systolic (upper)</label>
-            <div class="inp-wrap">
-              <input [(ngModel)]="form.systolicPressure" type="number" class="inp" placeholder="120" min="60" max="250" />
-              <span class="inp-unit">mmHg</span>
-            </div>
-            <div class="field-hint">Normal: 90–120</div>
-          </div>
-          <div class="field">
-            <label>Diastolic (lower)</label>
-            <div class="inp-wrap">
-              <input [(ngModel)]="form.diastolicPressure" type="number" class="inp" placeholder="80" min="40" max="150" />
-              <span class="inp-unit">mmHg</span>
-            </div>
-            <div class="field-hint">Normal: 60–80</div>
-          </div>
-        </div>
+  <!-- Blood Pressure -->
+  <div class="field-card">
+    <div class="fc-hdr">
+      <div class="fc-ico" style="background:#FEF2F2">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D84040" stroke-width="2">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
       </div>
-
-      <!-- Heart Rate -->
-      <div class="section-card">
-        <div class="section-hdr">
-          <div class="section-icon hr">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          </div>
-          <div>
-            <div class="section-title">Heart Rate</div>
-            <div class="section-sub">Count beats for 60 seconds or use a monitor</div>
-          </div>
-        </div>
-        <div class="field">
-          <label>Beats per minute</label>
-          <div class="inp-wrap">
-            <input [(ngModel)]="form.heartRate" type="number" class="inp" placeholder="72" min="30" max="250" />
-            <span class="inp-unit">bpm</span>
-          </div>
-          <div class="field-hint">Normal: 60–100 bpm</div>
-        </div>
+      <div>
+        <div class="fc-title">Blood Pressure</div>
+        <div class="fc-sub">Enter as systolic/diastolic (e.g. 120/80)</div>
       </div>
-
-      <!-- Blood Glucose -->
-      <div class="section-card">
-        <div class="section-hdr">
-          <div class="section-icon gl">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2"><ellipse cx="12" cy="12" rx="10" ry="10"/><path d="M12 8v8M8 12h8"/></svg>
-          </div>
-          <div>
-            <div class="section-title">Blood Glucose</div>
-            <div class="section-sub">Measured with a glucometer</div>
-          </div>
-        </div>
-        <div class="field">
-          <label>Blood sugar level</label>
-          <div class="inp-wrap">
-            <input [(ngModel)]="form.sugar" type="number" class="inp" placeholder="100" min="30" max="600" />
-            <span class="inp-unit">mg/dL</span>
-          </div>
-          <div class="field-hint">Normal: 70–140 mg/dL</div>
-        </div>
-      </div>
-
-      <div class="toast success" *ngIf="saved()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        Vitals saved successfully! Redirecting...
-      </div>
-      <div class="toast error" *ngIf="error()">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        {{ error() }}
-      </div>
-
-      <button class="btn-save" (click)="save()" [disabled]="saving()">
-        <span class="mini-spinner" *ngIf="saving()"></span>
-        <svg *ngIf="!saving()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        {{ saving() ? 'Saving...' : 'Save Vitals' }}
-      </button>
     </div>
+    <div class="inp-row">
+      <input [(ngModel)]="form.bloodPressure" class="inp" placeholder="120/80" />
+      <span class="inp-unit">mmHg</span>
+    </div>
+  </div>
+
+  <!-- Heart Rate -->
+  <div class="field-card">
+    <div class="fc-hdr">
+      <div class="fc-ico" style="background:#EFF6FF">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#185FA5" stroke-width="2">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </div>
+      <div>
+        <div class="fc-title">Heart Rate</div>
+        <div class="fc-sub">Normal range: 60–100 bpm</div>
+      </div>
+    </div>
+    <div class="inp-row">
+      <input [(ngModel)]="form.heartRate" type="number" class="inp" placeholder="72" min="30" max="300" />
+      <span class="inp-unit">bpm</span>
+    </div>
+  </div>
+
+  <!-- Blood Sugar -->
+  <div class="field-card">
+    <div class="fc-hdr">
+      <div class="fc-ico" style="background:#FFFBEB">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d4a017" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <div>
+        <div class="fc-title">Blood Sugar</div>
+        <div class="fc-sub">Normal fasting: 70–100 mg/dL</div>
+      </div>
+    </div>
+    <div class="inp-row">
+      <input [(ngModel)]="form.bloodSugarLevel" type="number" class="inp" placeholder="90" min="30" max="600" />
+      <span class="inp-unit">mg/dL</span>
+    </div>
+  </div>
+
+  <!-- Oxygen Level -->
+  <div class="field-card">
+    <div class="fc-hdr">
+      <div class="fc-ico" style="background:#ECFDF5">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2">
+          <path d="M12 2a10 10 0 0 1 10 10c0 4.19-2.57 7.8-6.25 9.33"/>
+          <path d="M12 2a10 10 0 0 0-10 10c0 4.19 2.57 7.8 6.25 9.33"/>
+        </svg>
+      </div>
+      <div>
+        <div class="fc-title">Oxygen Level</div>
+        <div class="fc-sub">Normal: 95–100%</div>
+      </div>
+    </div>
+    <div class="inp-row">
+      <input [(ngModel)]="form.oxygenLevel" type="number" class="inp" placeholder="98" min="50" max="100" />
+      <span class="inp-unit">%</span>
+    </div>
+  </div>
+
+  <!-- Temperature -->
+  <div class="field-card">
+    <div class="fc-hdr">
+      <div class="fc-ico" style="background:#FEF2F2">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D84040" stroke-width="2">
+          <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="fc-title">Temperature</div>
+        <div class="fc-sub">Normal: 36–37.4°C</div>
+      </div>
+    </div>
+    <div class="inp-row">
+      <input [(ngModel)]="form.temperature" type="number" class="inp" placeholder="36.6" min="32" max="45" step="0.1" />
+      <span class="inp-unit">°C</span>
+    </div>
+  </div>
+
+  <!-- Weight -->
+  <div class="field-card">
+    <div class="fc-hdr">
+      <div class="fc-ico" style="background:#F3E8FF">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2">
+          <circle cx="12" cy="5" r="3"/>
+          <path d="M6.5 8a2 2 0 0 0-1.905 1.46L2.1 17.5A2 2 0 0 0 4 20h16a2 2 0 0 0 1.9-2.5l-2.495-8.04A2 2 0 0 0 17.5 8Z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="fc-title">Weight</div>
+        <div class="fc-sub">Log regularly to track changes</div>
+      </div>
+    </div>
+    <div class="inp-row">
+      <input [(ngModel)]="form.weight" type="number" class="inp" placeholder="70" min="20" max="300" step="0.1" />
+      <span class="inp-unit">kg</span>
+    </div>
+  </div>
+
+  <div class="err-box" *ngIf="err()">{{ err() }}</div>
+
+  <div class="success-box" *ngIf="saved()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
+    Vitals saved successfully!
+  </div>
+
+  <button class="btn-save" (click)="save()" [disabled]="saving() || saved()">
+    <span class="btn-spin" *ngIf="saving()"></span>
+    {{ saving() ? 'Saving...' : saved() ? 'Saved!' : 'Save Readings' }}
+  </button>
+</div>
   `,
   styles: [`
-    * { box-sizing:border-box; }
-    .page { padding:24px; max-width:600px; font-family:'Cairo','Segoe UI',sans-serif; }
-    @media(max-width:768px){ .page { padding:16px; } }
-
-    .top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
-    .top-bar h1 { font-size:18px; font-weight:800; color:#111; }
-    .back-btn { background:none; border:none; cursor:pointer; color:#555; padding:6px; border-radius:8px; display:flex; }
-    .back-btn:hover { background:#f0f0f0; }
-    .hint { font-size:13px; color:#888; margin-bottom:16px; line-height:1.5; }
-
-    .section-card { background:#fff; border-radius:16px; padding:18px; margin-bottom:14px; box-shadow:0 2px 10px rgba(0,0,0,.06); }
-    .section-hdr { display:flex; align-items:flex-start; gap:12px; margin-bottom:16px; }
-    .section-icon { width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .section-icon.bp { background:#FEF2F2; }
-    .section-icon.hr { background:#E6F1FB; }
-    .section-icon.gl { background:#E1F5EE; }
-    .section-title { font-size:15px; font-weight:700; color:#111; margin-bottom:2px; }
-    .section-sub   { font-size:12px; color:#888; }
-
-    .field-row { display:flex; gap:12px; } @media(max-width:480px){ .field-row{flex-direction:column;} }
-    .field { flex:1; margin-bottom:10px; }
-    .field label { display:block; font-size:12px; font-weight:700; color:#555; margin-bottom:6px; text-transform:uppercase; letter-spacing:.4px; }
-    .inp-wrap { position:relative; }
-    .inp { width:100%; padding:12px 50px 12px 14px; border:1.5px solid #e8e8e8; border-radius:10px; font-size:16px; outline:none; font-family:inherit; background:#F7F8FA; }
-    .inp:focus { border-color:#D84040; background:#fff; }
-    .inp-unit { position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:12px; color:#aaa; font-weight:600; pointer-events:none; }
-    .field-hint { font-size:11px; color:#aaa; margin-top:4px; }
-
-    .toast { display:flex; align-items:center; gap:8px; padding:13px 16px; border-radius:12px; font-size:14px; font-weight:600; margin-bottom:12px; }
-    .toast.success { background:#E1F5EE; color:#0F6E56; }
-    .toast.error   { background:#FEF2F2; color:#D84040; }
-
-    .mini-spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.4); border-top-color:#fff; border-radius:50%; animation:spin .7s linear infinite; }
-    @keyframes spin { to { transform:rotate(360deg); } }
-
-    .btn-save { width:100%; padding:15px; background:#D84040; color:#fff; border:none; border-radius:14px; font-size:16px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; }
-    .btn-save:disabled { opacity:.55; cursor:not-allowed; }
-    .btn-save:hover:not(:disabled) { opacity:.88; }
-  `],
+    *{box-sizing:border-box;margin:0;padding:0;}
+    .page{padding:24px;max-width:560px;font-family:'Cairo','Segoe UI',sans-serif;}
+    @media(max-width:768px){.page{padding:16px;}}
+    .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+    h1{font-size:20px;font-weight:800;color:#111;}
+    .back-btn{background:none;border:none;cursor:pointer;color:#555;padding:4px;display:flex;border-radius:8px;}
+    .back-btn:hover{background:#f0f0f0;}
+    .hint{font-size:13px;color:#6B7280;margin-bottom:18px;}
+    .field-card{background:#fff;border-radius:16px;padding:16px;margin-bottom:10px;box-shadow:0 1px 6px rgba(0,0,0,.06);border:1px solid #F0F2F5;}
+    .fc-hdr{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+    .fc-ico{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .fc-title{font-size:15px;font-weight:700;color:#111;}
+    .fc-sub{font-size:12px;color:#9CA3AF;margin-top:2px;}
+    .inp-row{display:flex;align-items:center;gap:10px;}
+    .inp{flex:1;padding:11px 14px;border:1.5px solid #E8ECF0;border-radius:11px;font-size:15px;font-family:inherit;outline:none;color:#111;transition:border-color .15s;}
+    .inp:focus{border-color:#D84040;box-shadow:0 0 0 3px rgba(216,64,64,.08);}
+    .inp-unit{font-size:13px;font-weight:600;color:#6B7280;white-space:nowrap;min-width:40px;}
+    .err-box{background:#FEF2F2;color:#D84040;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:13px;word-break:break-all;border:1px solid #fecaca;}
+    .success-box{display:flex;align-items:center;gap:8px;background:#ECFDF5;color:#0F6E56;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:14px;font-weight:700;}
+    .btn-save{width:100%;padding:14px;background:#D84040;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;}
+    .btn-save:disabled{opacity:.5;cursor:not-allowed;}
+    .btn-spin{width:15px;height:15px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+  `]
 })
-export class AddVitalsComponent implements OnInit {
-  private profileSvc = inject(ProfileService);
-  readonly router    = inject(Router);
-
+export class AddVitalsComponent {
+  private http = inject(HttpClient);
+  readonly router = inject(Router);
   saving = signal(false);
   saved  = signal(false);
-  error  = signal('');
-  form   = { systolicPressure: null as any, diastolicPressure: null as any, heartRate: null as any, sugar: null as any };
+  err    = signal('');
 
-  ngOnInit(): void {
-    this.profileSvc.getPatientData().subscribe({
-      next: (res: any) => {
-        const d = res?.data ?? res ?? {};
-        this.form.systolicPressure  = d.systolicPressure  || null;
-        this.form.diastolicPressure = d.diastolicPressure || null;
-        this.form.heartRate         = d.heartRate         || null;
-        this.form.sugar             = d.sugar             || null;
-      }
-    });
-  }
+  // Fields match exactly what POST /api/Vital/my expects
+  form = {
+    bloodPressure:   '',     // string "120/80"
+    heartRate:       null as number | null,
+    bloodSugarLevel: null as number | null,  // NOTE: bloodSugarLevel NOT sugar
+    oxygenLevel:     null as number | null,
+    temperature:     null as number | null,
+    weight:          null as number | null,
+  };
 
   save(): void {
-    const dto: any = {};
-    if (this.form.systolicPressure)  dto.systolicPressure  = Number(this.form.systolicPressure);
-    if (this.form.diastolicPressure) dto.diastolicPressure = Number(this.form.diastolicPressure);
-    if (this.form.heartRate)         dto.heartRate  = Number(this.form.heartRate);
-    if (this.form.sugar)             dto.sugar      = Number(this.form.sugar);
+    // Build body with only non-empty values
+    const body: any = {};
+    if (this.form.bloodPressure?.trim())  body.bloodPressure   = this.form.bloodPressure.trim();
+    if (this.form.heartRate)              body.heartRate        = Number(this.form.heartRate);
+    if (this.form.bloodSugarLevel)        body.bloodSugarLevel  = Number(this.form.bloodSugarLevel);
+    if (this.form.oxygenLevel)            body.oxygenLevel      = Number(this.form.oxygenLevel);
+    if (this.form.temperature)            body.temperature      = Number(this.form.temperature);
+    if (this.form.weight)                 body.weight           = Number(this.form.weight);
 
-    if (!Object.keys(dto).length) { this.error.set('Please enter at least one reading.'); return; }
-    this.saving.set(true); this.error.set('');
+    if (!Object.keys(body).length) {
+      this.err.set('Please enter at least one reading.');
+      return;
+    }
 
-    this.profileSvc.updatePatient(dto).subscribe({
+    this.saving.set(true);
+    this.err.set('');
+
+    // POST /api/Vital/my  — exact API body
+    this.http.post<any>(`${environment.apiUrl}/Vital/my`, body).subscribe({
       next: () => {
-        this.saving.set(false); this.saved.set(true);
+        this.saving.set(false);
+        this.saved.set(true);
         setTimeout(() => this.router.navigate(['/patient/vitals']), 1400);
       },
-      error: (err: any) => {
+      error: (e: any) => {
         this.saving.set(false);
-        this.error.set(err?.error?.message ?? 'Failed to save. Please try again.');
-      },
+        const errs = e?.error?.errors;
+        this.err.set(
+          errs
+            ? Object.entries(errs).map(([f, m]) => `${f}: ${(m as string[]).join(', ')}`).join(' | ')
+            : e?.error?.message ?? e?.error?.title ?? `HTTP ${e?.status}: ${e?.statusText}`
+        );
+      }
     });
   }
 }

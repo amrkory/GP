@@ -26,7 +26,7 @@ interface Conv {
     <div class="page">
       <div class="page-hdr">
         <div>
-          <h1>Messages</h1>
+          <h1>Chats</h1>
           <p class="sub">Chat with your doctors</p>
         </div>
         <!-- SignalR live indicator -->
@@ -172,7 +172,7 @@ export class PatientChatInboxComponent implements OnInit, OnDestroy {
 
   loadConvs(): void {
     // Step 1: Try GET /api/Chat inbox
-    this.chatSvc.inbox().subscribe({
+    this.chatSvc.getConversations().subscribe({
       next: (res: any) => {
         const raw: any[] = Array.isArray(res) ? res
           : res?.data?.items ?? res?.data ?? [];

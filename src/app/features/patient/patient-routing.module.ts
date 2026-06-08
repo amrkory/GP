@@ -32,7 +32,10 @@ const routes: Routes = [
       },
 
       { path: 'family',          loadComponent: () => import('./family/family.component').then(c => c.FamilyComponent) },
-      { path: 'chat/:doctorId',  loadComponent: () => import('./chat/chat.component').then(c => c.PatientChatComponent) },
+      { path: 'chat',               loadComponent: () => import('./chat/chat-inbox.component').then(c => c.PatientChatInboxComponent) },
+      { path: 'chat/:doctorId',     loadComponent: () => import('./chat/chat.component').then(c => c.PatientChatComponent) },
+      { path: 'messages',           loadComponent: () => import('./chat/chat-inbox.component').then(c => c.PatientChatInboxComponent) },
+      { path: 'messages/:doctorId', loadComponent: () => import('./chat/chat.component').then(c => c.PatientChatComponent) },
       { path: 'profile',         loadComponent: () => import('./profile/profile.component').then(c => c.PatientProfileComponent) },
     ],
   },

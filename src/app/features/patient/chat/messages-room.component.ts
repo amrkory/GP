@@ -23,6 +23,33 @@ function getBody(raw: any): string {
   return '';
 }
 
+export function fmtTime(iso: string): string {
+  if (!iso) return '';
+  let src = iso;
+  if (!src.endsWith('Z') && !src.includes('+') && !/T.*-\d{2}:\d{2}/.test(src)) src = src + 'Z';
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Africa/Cairo',
+    }).format(new Date(src));
+  } catch {
+    return new Date(src).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  }
+}
+
+export function fmtDay(iso: string): string {
+  if (!iso) return 'Today';
+  let src = iso;
+  if (!src.endsWith('Z') && !src.includes('+') && !/T.*-\d{2}:\d{2}/.test(src)) src = src + 'Z';
+  const d = new Date(src), now = new Date();
+  const opts: Intl.DateTimeFormatOptions = { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' };
+  const dStr   = new Intl.DateTimeFormat('en-CA', opts).format(d);
+  const nowStr = new Intl.DateTimeFormat('en-CA', opts).format(now);
+  const ystStr = new Intl.DateTimeFormat('en-CA', opts).format(new Date(now.getTime() - 86_400_000));
+  if (dStr === nowStr) return 'Today';
+  if (dStr === ystStr) return 'Yesterday';
+  return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Africa/Cairo' }).format(d);
+}
+
 function toMsg(raw: any): Msg {
   return {
     id:         raw.id ?? raw.messageId ?? `${Date.now()}-${Math.random()}`,
@@ -76,7 +103,7 @@ function toMsg(raw: any): Msg {
           <div class="b" [class.mine]="isMine(m)" [class.tmp]="isTmp(m)">
             <p>{{ m.body }}</p>
             <div class="bf">
-              <span class="bt">{{ m.sentAt | date:'h:mm a' }}</span>
+              <span class="bt">{{ fmtTime(m.sentAt) }}</span>
               <span class="tks" *ngIf="isMine(m)">
                 <svg *ngIf="m.isRead" width="14" height="9" viewBox="0 0 22 14" fill="none">
                   <path d="M1 7L5 11L13 3" stroke="#93C5FD" stroke-width="2" stroke-linecap="round"/>
@@ -176,14 +203,15 @@ export class MessagesRoomComponent implements OnInit, OnDestroy, AfterViewChecke
   otherId = '';
   myId    = '';        // resolved after history loads
 
-  // ── isMine: uses otherId NOT myId ─────────────────────────────────
-  // A message is MINE if its senderId is NOT the other person.
-  // This is 100% reliable — we always know otherId from the URL param.
+  // isMine: primary check is senderId === myId (most reliable)
+  // fallback to senderId !== otherId when myId not yet resolved
   isMine(m: Msg): boolean {
-    if (this.isTmp(m)) return true;               // tmp always mine
-    return m.senderId !== this.otherId;            // not theirs = mine
+    if (this.isTmp(m)) return true;
+    if (this.myId) return m.senderId === this.myId;
+    return m.senderId !== this.otherId;
   }
   isTmp(m: Msg): boolean { return m.id.startsWith('tmp_'); }
+  readonly fmtTime = fmtTime;
 
   ini(n: string): string {
     const p = (n||'').trim().split(' ');
@@ -195,19 +223,13 @@ export class MessagesRoomComponent implements OnInit, OnDestroy, AfterViewChecke
   grouped(): {date:string;msgs:Msg[]}[] {
     const m = new Map<string,Msg[]>();
     for (const msg of this.msgs()) {
-      const d = this.dl(msg.sentAt);
+      const d = fmtDay(msg.sentAt);
       if (!m.has(d)) m.set(d,[]);
       m.get(d)!.push(msg);
     }
     return [...m.entries()].map(([date,msgs]) => ({date,msgs}));
   }
-  private dl(iso: string): string {
-    const d = new Date(iso), now = new Date();
-    const diff = Math.floor((now.getTime()-d.getTime())/86400000);
-    if (diff===0) return 'Today';
-    if (diff===1) return 'Yesterday';
-    return d.toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'});
-  }
+  // day label handled by fmtDay()
 
   private subs: Subscription[] = [];
   private sp = false;
@@ -269,7 +291,7 @@ export class MessagesRoomComponent implements OnInit, OnDestroy, AfterViewChecke
     // Real-time
     this.subs.push(
       this.signalR.message$.subscribe((raw: any) => {
-        const m   = toMsg(raw);
+        const m   = toMsg(raw);  // sentAt forced to UTC inside toMsg
         const sid = m.senderId;
         const rid = m.receiverId;
 

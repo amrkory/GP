@@ -2,8 +2,9 @@ import { Component, OnInit, inject, signal, HostListener } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule }   from '@angular/common';
 import { AuthService }    from '../../../core/services/auth.service';
-import { ProfileService } from '../../../core/services/profile.service';
 import { NotificationService } from '../../../core/services/notification.service';
+import { SignalRService }     from '../../../core/services/signalr.service';
+import { ChatService }        from '../../../core/services/chat.service';
 
 @Component({
   selector: 'app-patient-shell',
@@ -24,10 +25,7 @@ import { NotificationService } from '../../../core/services/notification.service
         </div>
 
         <div class="sidebar-user">
-          <a routerLink="/patient/profile" class="user-avatar-link">
-            <img *ngIf="avatarUrl()" [src]="avatarUrl()" class="user-avatar-img" alt="avatar" />
-            <div *ngIf="!avatarUrl()" class="user-avatar">{{ initials() }}</div>
-          </a>
+          <div class="user-avatar">{{ initials() }}</div>
           <div class="user-info">
             <div class="user-name">{{ userName() }}</div>
             <div class="user-role">Patient</div>
@@ -70,6 +68,14 @@ import { NotificationService } from '../../../core/services/notification.service
               <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
             </svg>
             <span>Prescriptions</span>
+          </a>
+
+          <a routerLink="/patient/chat" routerLinkActive="active" class="nav-link chat-link">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </svg>
+            <span>Chats</span>
+            <span class="nav-badge chat-badge" *ngIf="totalUnread > 0">{{ totalUnread > 9 ? "9+" : totalUnread }}</span>
           </a>
 
           <div class="nav-section-label" style="margin-top:8px">More</div>
@@ -151,10 +157,7 @@ import { NotificationService } from '../../../core/services/notification.service
               </svg>
               <span class="notif-dot" *ngIf="unreadCount() > 0">{{ unreadCount() }}</span>
             </button>
-            <button class="header-avatar" routerLink="/patient/profile">
-              <img *ngIf="avatarUrl()" [src]="avatarUrl()" class="header-avatar-img" alt="" />
-              <span *ngIf="!avatarUrl()">{{ initials() }}</span>
-            </button>
+            <button class="header-avatar" routerLink="/patient/profile">{{ initials() }}</button>
           </div>
         </header>
 
@@ -173,6 +176,13 @@ import { NotificationService } from '../../../core/services/notification.service
         <a routerLink="/patient/appointments" routerLinkActive="active" class="bn-item">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           <span>Appointments</span>
+        </a>
+        <a routerLink="/patient/chat" routerLinkActive="active" class="bn-item">
+          <div style="position:relative;display:inline-flex">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="bn-badge" *ngIf="totalUnread > 0">{{ totalUnread > 9 ? "9+" : totalUnread }}</span>
+          </div>
+          <span>Chats</span>
         </a>
         <a routerLink="/patient/ai-assistant" routerLinkActive="active" class="bn-item bn-ai">
           <div class="bn-ai-fab">
@@ -206,6 +216,7 @@ import { NotificationService } from '../../../core/services/notification.service
           <a routerLink="/patient/vitals"       routerLinkActive="active" class="nav-link" (click)="mobileOpen=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Vitals</span></a>
           <a routerLink="/patient/checklist"    routerLinkActive="active" class="nav-link" (click)="mobileOpen=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Checklist</span></a>
           <a routerLink="/patient/prescriptions" routerLinkActive="active" class="nav-link" (click)="mobileOpen=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg><span>Prescriptions</span></a>
+          <a routerLink="/patient/chat"         routerLinkActive="active" class="nav-link chat-link" (click)="mobileOpen=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Chats</span><span class="nav-badge chat-badge" *ngIf="totalUnread > 0">{{ totalUnread > 9 ? "9+" : totalUnread }}</span></a>
           <a routerLink="/patient/records"       routerLinkActive="active" class="nav-link" (click)="mobileOpen=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Records</span></a>
           <a routerLink="/patient/family"        routerLinkActive="active" class="nav-link" (click)="mobileOpen=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Family</span></a>
           <a routerLink="/patient/home-service"  routerLinkActive="active" class="nav-link" (click)="mobileOpen=false"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home Service</span></a>
@@ -272,7 +283,6 @@ import { NotificationService } from '../../../core/services/notification.service
       padding: 14px 16px;
       border-bottom: 1px solid var(--border, #E8ECF0);
     }
-    .user-avatar-link { text-decoration:none; flex-shrink:0; }
     .user-avatar {
       width: 36px; height: 36px;
       border-radius: 50%;
@@ -281,12 +291,6 @@ import { NotificationService } from '../../../core/services/notification.service
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
     }
-    .user-avatar-img {
-      width: 36px; height: 36px;
-      border-radius: 50%; object-fit: cover;
-      border: 2px solid #F0F2F5; flex-shrink: 0;
-    }
-    .header-avatar-img { width:100%; height:100%; border-radius:50%; object-fit:cover; }
     .user-name { font-size: 13px; font-weight: 600; color: #111; }
     .user-role { font-size: 11px; color: #D84040; font-weight: 500; margin-top: 1px; }
 
@@ -502,9 +506,7 @@ export class PatientShellComponent implements OnInit {
 
   sidebarCollapsed = false;
   mobileOpen       = false;
-  avatarUrl        = signal('');
-  private profSvc  = inject(ProfileService);
-
+  totalUnread      = 0;
   unreadCount() { return this.notifService.unreadCount(); }
 
   initials(): string {
@@ -528,13 +530,12 @@ export class PatientShellComponent implements OnInit {
   @HostListener('window:keydown.escape')
   onEsc(): void { this.mobileOpen = false; }
 
+  private signalRSvc = inject(SignalRService);
+  private chatSvc    = inject(ChatService);
+
   ngOnInit(): void {
-    this.notifService.load().subscribe();
-    this.profSvc.getPatientData().subscribe({
-      next: (res: any) => {
-        const url = (res?.data ?? res)?.profilePictureUrl ?? '';
-        if (url) this.avatarUrl.set(url);
-      }, error: () => {}
-    });
-  }
+    // Connect SignalR once for the whole session
+    this.signalRSvc.startConnection();
+    // Live unread count
+    this.signalRSvc.message$.subscribe(() => this.totalUnread++); this.notifService.load().subscribe(); }
 }

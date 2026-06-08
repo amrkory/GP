@@ -100,7 +100,7 @@ interface FoodEntry { food: string; calories: number; protein?: number; carbs?: 
     </div>
   `,
   styles: [`
-    .page{padding:24px;max-width:640px;}@media(max-width:768px){.page{padding:16px;}}
+    .page{padding:24px;}@media(max-width:768px){.page{padding:16px;}}
     .page-header{margin-bottom:20px;}.page-header h1{font-size:22px;font-weight:800;color:#111;margin-bottom:4px;}
     .page-sub{font-size:14px;color:#888;}
     .search-card{background:#fff;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 1px 8px rgba(0,0,0,.06);}

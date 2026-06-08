@@ -396,12 +396,12 @@ import { ChatService }        from '../../../core/services/chat.service';
       border: none; cursor: pointer;
     }
 
-    /* Page content */
+    /* Page content — full width, pages control their own layout */
     .page-content {
       flex: 1;
       padding: 24px;
-      max-width: 1200px;
       width: 100%;
+      min-width: 0;
     }
 
     /* ── Bottom nav (mobile) ─────────────────────────────────────────────── */
@@ -415,6 +415,7 @@ import { ChatService }        from '../../../core/services/chat.service';
       z-index: 50;
       padding: 0 4px 6px;
     }
+    .bn-badge { position:absolute; top:-4px; right:-8px; background:#D84040; color:#fff; font-size:9px; font-weight:700; min-width:16px; height:16px; border-radius:8px; display:flex; align-items:center; justify-content:center; padding:0 3px; }
     .bn-item {
       flex: 1;
       display: flex; flex-direction: column;
@@ -478,7 +479,7 @@ import { ChatService }        from '../../../core/services/chat.service';
       .sidebar-overlay { display: block; pointer-events: none; }
       .sidebar-overlay.active { pointer-events: auto; }
       .mobile-sidebar { display: flex; z-index: 70; }
-      .page-content { padding: 16px; padding-bottom: 80px; }
+      .page-content { padding: 16px; padding-bottom: 80px; width: 100%; }
     }
 
     @media (max-width: 480px) {
@@ -507,6 +508,7 @@ export class PatientShellComponent implements OnInit {
   sidebarCollapsed = false;
   mobileOpen       = false;
   totalUnread      = 0;
+
   unreadCount() { return this.notifService.unreadCount(); }
 
   initials(): string {

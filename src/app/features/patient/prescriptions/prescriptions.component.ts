@@ -132,7 +132,7 @@ function toArr(r: any): any[] {
   `,
   styles: [`
     *{box-sizing:border-box;margin:0;padding:0;}
-    .page{padding:24px;max-width:720px;font-family:'Cairo','Segoe UI',sans-serif;}
+    .page{padding:24px;font-family:'Cairo','Segoe UI',sans-serif;}
     @media(max-width:768px){.page{padding:16px;}}
     .pg-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;gap:12px;flex-wrap:wrap;}
     h1{font-size:22px;font-weight:800;color:#111;}

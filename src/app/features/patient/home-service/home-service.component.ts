@@ -172,7 +172,7 @@ import { environment }     from '../../../../environments/environment';
   `,
   styles: [`
     * { box-sizing:border-box; margin:0; padding:0; }
-    .page { padding:24px; max-width:1100px; font-family:'Cairo','Segoe UI',sans-serif; }
+    .page { padding:24px;  font-family:'Cairo','Segoe UI',sans-serif; }
     @media(max-width:768px){ .page{padding:14px;} }
 
     .page-hdr { margin-bottom:20px; }

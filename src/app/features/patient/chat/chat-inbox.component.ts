@@ -36,6 +36,10 @@ interface Conv {
         </div>
       </div>
 
+      <!-- Two-column grid: list left, info panel right on desktop -->
+      <div class="chat-grid">
+        <div class="chat-main">
+
       <!-- Search -->
       <div class="search-box">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="2">
@@ -85,12 +89,40 @@ interface Conv {
             </svg>
           </div>
         </div>
-      </div>
+      </div><!-- /conv-list -->
+        </div><!-- /chat-main -->
+
+        <!-- Right panel: tips/info on desktop -->
+        <div class="chat-side">
+          <div class="side-card">
+            <div class="side-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#D84040" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              Your Care Team
+            </div>
+            <p class="side-desc">Message your doctors directly. Responses are usually within a few hours.</p>
+            <div class="side-tip">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              End-to-end secure messaging
+            </div>
+            <div class="side-tip">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Real-time delivery via SignalR
+            </div>
+            <div class="side-tip">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+              Message history always saved
+            </div>
+          </div>
+        </div><!-- /chat-side -->
+
+      </div><!-- /chat-grid -->
     </div>
   `,
   styles: [`
     * { box-sizing:border-box; margin:0; padding:0; }
-    .page { padding:22px; max-width:680px; font-family:'Cairo','Segoe UI',sans-serif; }
+    .page { width:100%; font-family:'Cairo','Segoe UI',sans-serif; }
     @media(max-width:768px){ .page{padding:14px;} }
 
     .page-hdr { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:18px; gap:12px; }
@@ -131,6 +163,19 @@ interface Conv {
     .cr { display:flex; flex-direction:column; align-items:flex-end; gap:5px; flex-shrink:0; min-width:48px; }
     .ct { font-size:11px; color:#aaa; }
     .cbadge { background:#D84040; color:#fff; font-size:11px; font-weight:700; min-width:20px; height:20px; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 5px; }
+
+    /* Two-column layout */
+    .chat-grid { display:grid; grid-template-columns:1fr 340px; gap:20px; align-items:start; }
+    @media(max-width:1024px){ .chat-grid { grid-template-columns:1fr; } }
+    .chat-main { min-width:0; }
+    .chat-side { display:flex; flex-direction:column; gap:14px; }
+    @media(max-width:1024px){ .chat-side { display:none; } }
+
+    .side-card { background:#fff; border-radius:18px; padding:20px; border:1px solid #F0F2F5; box-shadow:0 1px 6px rgba(0,0,0,.06); }
+    .side-title { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:700; color:#111; margin-bottom:10px; }
+    .side-desc { font-size:13px; color:#6B7280; line-height:1.6; margin-bottom:14px; }
+    .side-tip { display:flex; align-items:center; gap:8px; font-size:13px; color:#374151; padding:6px 0; border-bottom:1px solid #F8F9FC; }
+    .side-tip:last-child { border-bottom:none; }
   `]
 })
 export class PatientChatInboxComponent implements OnInit, OnDestroy {
@@ -172,7 +217,7 @@ export class PatientChatInboxComponent implements OnInit, OnDestroy {
 
   loadConvs(): void {
     // Step 1: Try GET /api/Chat inbox
-    this.chatSvc.getConversations().subscribe({
+    this.chatSvc.inbox().subscribe({
       next: (res: any) => {
         const raw: any[] = Array.isArray(res) ? res
           : res?.data?.items ?? res?.data ?? [];

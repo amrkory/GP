@@ -151,7 +151,7 @@ interface DiagResult  { predicted_disease: string; doctor: string; overview: str
   `,
   styles: [`
     * { box-sizing: border-box; }
-    .chat-page { display:flex; flex-direction:column; height:calc(100vh - 60px); background:#F7F8FA; max-width:680px; margin:0 auto; font-family:'Cairo','Segoe UI',sans-serif; }
+    .chat-page { display:flex; flex-direction:column; height:calc(100vh - 60px); background:#F7F8FA;  margin:0 auto; font-family:'Cairo','Segoe UI',sans-serif; }
     @media(max-width:768px){ .chat-page { height:calc(100vh - 56px); } }
 
     /* Header */

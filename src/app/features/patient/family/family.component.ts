@@ -96,7 +96,7 @@ import { FamilyMember }                        from '../../../core/models/api.mo
     </div>
   `,
   styles: [`
-    .page { padding:24px; max-width:900px; }
+    .page { padding:24px;  }
     @media (max-width:768px) { .page { padding:16px; } }
     .page-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
     .page-header h1 { font-size:22px; font-weight:700; color:#111; }

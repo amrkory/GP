@@ -192,7 +192,7 @@ function toArr(r: any): any[] {
   `,
   styles: [`
     *{box-sizing:border-box;margin:0;padding:0;}
-    .page{padding:24px;max-width:760px;font-family:'Cairo','Segoe UI',sans-serif;}
+    .page{padding:24px;font-family:'Cairo','Segoe UI',sans-serif;}
     @media(max-width:768px){.page{padding:16px;}}
     .pg-hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px;}
     h1{font-size:22px;font-weight:800;color:#111;}

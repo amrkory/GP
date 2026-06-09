@@ -20,6 +20,9 @@ const routes: Routes = [
       { path: 'appointments/book',
         loadComponent: () => import('./appointments/book-appointment/book-appointment.component').then(c => c.BookAppointmentComponent) },
 
+      { path: 'doctors/:doctorId',
+        loadComponent: () => import('./doctors/doctor-profile/doctor-profile.component').then(c => c.DoctorProfileComponent) },
+
       { path: 'appointments/:id',
         loadComponent: () => import('./appointments/appointment-detail/appointment-detail.component').then(c => c.AppointmentDetailComponent) },
 

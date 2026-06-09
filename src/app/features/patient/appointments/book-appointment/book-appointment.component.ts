@@ -1,14 +1,14 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule }  from '@angular/common';
 import { FormsModule }   from '@angular/forms';
-import { Router, ActivatedRoute } from '@angular/router';
+import { Router, ActivatedRoute, RouterLink } from '@angular/router';
 import { HttpClient }    from '@angular/common/http';
 import { environment }   from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-book-appointment',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
 <div class="page">
 
@@ -65,8 +65,16 @@ import { environment }   from '../../../../../environments/environment';
       <div class="sp"></div><span>Loading doctors…</span>
     </div>
 
+    <!-- Error -->
+    <div class="err-alert" *ngIf="loadErr() && !loading()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      {{ loadErr() }}
+    </div>
+
     <!-- Empty -->
-    <div class="empty-state" *ngIf="!loading() && filtered().length===0">
+    <div class="empty-state" *ngIf="!loading() && filtered().length===0 && !loadErr()">
       <div class="empty-ico">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#D0D5DD" stroke-width="1.5">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -103,10 +111,19 @@ import { environment }   from '../../../../../environments/environment';
                   {{ d.experienceYears }} yrs experience
                 </div>
               </div>
-              <div class="sel-check" *ngIf="selected()?.id===d.id">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
+              <div class="card-actions">
+                <button class="info-btn" (click)="viewProfile(d, $event)" title="View profile">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="8"/>
+                    <line x1="12" y1="12" x2="12" y2="16"/>
+                  </svg>
+                </button>
+                <div class="sel-check" *ngIf="selected()?.id===d.id">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                </div>
               </div>
             </div>
           </div>
@@ -324,6 +341,9 @@ import { environment }   from '../../../../../environments/environment';
     .doc-spec{font-size:12px;color:#2D4A8A;font-weight:600;margin-bottom:3px;}
     .doc-place{display:flex;align-items:center;gap:4px;font-size:11px;color:#9CA3AF;margin-bottom:2px;}
     .doc-exp{font-size:11px;color:#9CA3AF;}
+    .card-actions{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+    .info-btn{width:30px;height:30px;border-radius:50%;background:#F4F6FA;border:1.5px solid #E8ECF0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6B7280;transition:all .15s;}
+    .info-btn:hover{background:#EEF2FF;color:#2D4A8A;border-color:#2D4A8A;}
     .sel-check{width:22px;height:22px;border-radius:50%;background:#2D4A8A;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 
     /* ── Selected footer ── */
@@ -381,6 +401,7 @@ import { environment }   from '../../../../../environments/environment';
     .btn-book:disabled{opacity:.45;cursor:not-allowed;}
     .ring{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .6s linear infinite;}
     .cal-note{font-size:12px;color:#9CA3AF;text-align:center;margin-top:10px;}
+    .err-alert{display:flex;align-items:flex-start;gap:10px;background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.5;margin-bottom:16px;}
   `]
 })
 export class BookAppointmentComponent implements OnInit {
@@ -410,20 +431,45 @@ export class BookAppointmentComponent implements OnInit {
   rescheduleId   = '';
   private eventTypeUri = '';
 
+  loadErr = signal('');
+
   ngOnInit(): void {
     this.rescheduleId  = this.route.snapshot.paramMap.get('id') ?? '';
     this.rescheduleMode = !!this.rescheduleId;
 
-    this.http.get<any>(`${environment.apiUrl}/Appointment/Doctors`).subscribe({
+    // GET /api/Appointment/Doctors — returns approved doctors only
+    // pageSize=100 to get all doctors in one call
+    this.http.get<any>(`${environment.apiUrl}/Appointment/Doctors`, {
+      params: { pageNumber: '1', pageSize: '100' }
+    }).subscribe({
       next: (res: any) => {
-        const list: any[] = Array.isArray(res) ? res : res?.data?.items ?? res?.data ?? [];
+        console.log('[BookAppt] /Appointment/Doctors raw response:', res);
+        // Handle all possible response shapes
+        let list: any[] = [];
+        if (Array.isArray(res))                     list = res;
+        else if (Array.isArray(res?.data?.items))   list = res.data.items;
+        else if (Array.isArray(res?.data))          list = res.data;
+        else if (Array.isArray(res?.items))         list = res.items;
+        else if (typeof res === 'object' && res !== null) {
+          // Last resort: look for any array value in the response
+          const arr = Object.values(res).find(v => Array.isArray(v));
+          if (arr) list = arr as any[];
+        }
+        console.log('[BookAppt] Parsed doctors:', list.length, list);
         this.allDocs.set(list);
         this.filtered.set(list);
-        const specs = [...new Set(list.map(d => this.docSpec(d)).filter(Boolean))] as string[];
+        const specs = [...new Set(list.map(d => this.docSpec(d)).filter(Boolean).map((s:string) => s.trim().toLowerCase().replace(/\b\w/g, (l:string) => l.toUpperCase())))] as string[];
         this.specialties.set(specs);
         this.loading.set(false);
+        if (list.length === 0) {
+          this.loadErr.set('No approved doctors found. Doctors must be approved by admin before appearing here.');
+        }
       },
-      error: () => this.loading.set(false)
+      error: (e: any) => {
+        console.error('[BookAppt] Error loading doctors:', e);
+        this.loadErr.set(`Failed to load doctors (${e?.status ?? 'network error'}). Please try again.`);
+        this.loading.set(false);
+      }
     });
   }
 
@@ -541,12 +587,20 @@ export class BookAppointmentComponent implements OnInit {
     const l = d?.lastName  ?? d?.last_name  ?? '';
     return `${f} ${l}`.trim() || d?.name || d?.fullName || 'Doctor';
   }
-  docSpec(d: any): string  { return d?.specialtyName ?? d?.specialization ?? d?.specialty ?? ''; }
+  docSpec(d: any): string  {
+    const raw = d?.specialtyName ?? d?.specialization ?? d?.specialty ?? '';
+    return raw.trim().toLowerCase().replace(/\b\w/g, (l: string) => l.toUpperCase());
+  }
   docPlace(d: any): string { return d?.clinicName ?? d?.workPlace ?? ''; }
   ini(d: any): string {
     const n = this.docName(d).split(' ');
     return ((n[0]?.[0] ?? 'D') + (n[1]?.[0] ?? '')).toUpperCase();
   }
+  viewProfile(d: any, event: Event): void {
+    event.stopPropagation(); // don't select the doctor
+    this.router.navigate(['/patient/doctors', d.id], { state: { doctor: d } });
+  }
+
   private COLORS = ['#2D4A8A','#0F6E56','#D84040','#7C3AED','#0891B2'];
   clr(n: string): string { return this.COLORS[(n?.charCodeAt(0) || 0) % this.COLORS.length]; }
 }

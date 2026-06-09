@@ -272,43 +272,36 @@ export class PatientOverviewComponent implements OnInit {
   clr(n: string): string { return this.COLORS[(n?.charCodeAt(0)||0)%this.COLORS.length]; }
 
   ngOnInit(): void {
-    this.pid = this.route.parent?.snapshot.paramMap.get('patientId') ?? '';
+    this.pid = this.route.parent?.snapshot.paramMap.get('patientId')
+            ?? this.route.snapshot.paramMap.get('patientId') ?? '';
 
-    // Get patient data from appointments
-    this.http.get<any>(`${environment.apiUrl}/Appointment/doctor`, {
-      params: { pageNumber:'1', pageSize:'200' }
+    // 1. GET /api/Profile/patientData?userId={pid}  — most complete source
+    this.http.get<any>(`${environment.apiUrl}/Profile/patientData`, {
+      params: { userId: this.pid }
     }).subscribe({
-      next: (res:any) => {
-        const appts = toArr(res);
-        const a = appts.find(x => String(x.patientId ?? x.patient?.id) === this.pid);
-        if (a) {
-          this.p = {
-            id:           this.pid,
-            firstName:    a.patientFirstName ?? a.patient?.firstName ?? (a.patientName??'').split(' ')[0] ?? '',
-            lastName:     a.patientLastName  ?? a.patient?.lastName  ?? (a.patientName??'').split(' ').slice(1).join(' ') ?? '',
-            email:        a.patientEmail     ?? a.patient?.email     ?? '',
-            phone:        a.patientPhone     ?? a.patient?.phone     ?? a.patient?.phoneNumber ?? '',
-            gender:       a.patientGender    ?? a.patient?.gender    ?? '',
-            dateOfBirth:  a.patientDateOfBirth ?? a.patient?.dateOfBirth ?? null,
-            address:      a.patient?.address ?? '',
-            profilePictureUrl: a.patientAvatar ?? a.patient?.profilePictureUrl ?? a.patient?.avatarUrl ?? '',
-            bloodType:    a.patient?.bloodType ?? a.patientBloodType ?? '',
-            weight:       a.patient?.weight ?? null,
-            height:       a.patient?.height ?? null,
-            allergies:    a.patient?.allergies ?? [],
-            chronicDiseases: a.patient?.chronicDiseases ?? [],
-            systolicPressure:  a.patient?.systolicPressure  ?? null,
-            diastolicPressure: a.patient?.diastolicPressure ?? null,
-            heartRate:         a.patient?.heartRate ?? null,
-            sugar:             a.patient?.sugar     ?? null,
-          };
+      next: (res: any) => {
+        const d = res?.data ?? res;
+        if (d && (d.firstName || d.email || d.id)) {
+          this.p = this.mapProfile(d);
+          this.loading.set(false);
+        } else {
+          this.fallbackFromAppointments();
         }
-        this.loading.set(false);
       },
-      error: () => this.loading.set(false)
+      error: () => this.fallbackFromAppointments()
     });
 
-    // Load latest vitals
+    // 2. GET /api/Appointment/patient-details/{pid} — supplemental
+    this.http.get<any>(`${environment.apiUrl}/Appointment/patient-details/${this.pid}`)
+      .subscribe({
+        next: (res: any) => {
+          const d = res?.data ?? res;
+          if (d) this.p = { ...this.mapProfile(d), ...this.p };
+        },
+        error: () => {}
+      });
+
+    // 3. Load latest vitals
     this.http.get<any>(`${environment.apiUrl}/Vital/patient/${this.pid}`, {
       params: { pageNumber:'1', pageSize:'5' }
     }).subscribe({
@@ -320,6 +313,45 @@ export class PatientOverviewComponent implements OnInit {
         this.vitals.set(items);
       },
       error: () => {}
+    });
+  }
+
+  private mapProfile(d: any): any {
+    return {
+      id:                this.pid,
+      firstName:         d.firstName         ?? d.patientFirstName ?? (d.patientName??d.name??'').split(' ')[0] ?? '',
+      lastName:          d.lastName          ?? d.patientLastName  ?? (d.patientName??d.name??'').split(' ').slice(1).join(' ') ?? '',
+      email:             d.email             ?? d.patientEmail     ?? '',
+      phone:             d.phoneNumber       ?? d.phone            ?? d.patientPhone ?? '',
+      gender:            d.gender            ?? d.patientGender    ?? '',
+      dateOfBirth:       d.dateOfBirth       ?? d.patientDateOfBirth ?? null,
+      address:           d.address           ?? '',
+      profilePictureUrl: d.profilePictureUrl ?? d.avatarUrl        ?? d.patientAvatar ?? '',
+      bloodType:         d.bloodType         ?? d.patientBloodType ?? '',
+      weight:            d.weight            ?? null,
+      height:            d.height            ?? null,
+      allergies:         d.allergies         ?? [],
+      chronicDiseases:   d.chronicDiseases   ?? [],
+      systolicPressure:  d.systolicPressure  ?? null,
+      diastolicPressure: d.diastolicPressure ?? null,
+      heartRate:         d.heartRate         ?? null,
+      sugar:             d.sugar             ?? null,
+      education:         d.education         ?? '',
+      certifications:    d.certifications    ?? '',
+    };
+  }
+
+  private fallbackFromAppointments(): void {
+    this.http.get<any>(`${environment.apiUrl}/Appointment/doctor`, {
+      params: { pageNumber:'1', pageSize:'200' }
+    }).subscribe({
+      next: (res:any) => {
+        const appts = toArr(res);
+        const a = appts.find((x:any) => String(x.patientId ?? x.patient?.id) === this.pid);
+        if (a) this.p = this.mapProfile({ ...a, ...a.patient });
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false)
     });
   }
 }

@@ -27,12 +27,18 @@ export class ProfileService {
   }
 
   // ── PUT doctorNurse — exact fields from Swagger ───────────────────────────
-  // { firstName, lastName, email, profilePictureUrl }
+  // { firstName, lastName, email, profilePictureUrl, education, certifications }
   updateDoctorNurse(dto: {
     firstName?: string; lastName?: string;
     email?: string; profilePictureUrl?: string;
+    education?: string; certifications?: string;
   }): Observable<any> {
     return this.http.put<any>(`${this.api}/Profile/doctorNurse`, dto);
+  }
+
+  // ── GET patientData with optional userId ────────────────────────────────────
+  getPatientDataById(userId: string): Observable<any> {
+    return this.http.get<any>(`${this.api}/Profile/patientData`, { params: { userId } });
   }
 
   // ── PUT profile-picture — multipart/form-data ─────────────────────────────

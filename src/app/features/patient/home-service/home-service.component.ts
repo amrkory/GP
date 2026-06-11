@@ -155,12 +155,20 @@ import { environment }     from '../../../../environments/environment';
               </div>
 
               <!-- Provider name if assigned -->
-              <div class="req-row provider" *ngIf="r.providerName ?? r.nurseName">
+              <div class="req-row provider" *ngIf="r.nurseName ?? r.providerName ?? r.nurseFirstName">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                   <circle cx="12" cy="7" r="4"/>
                 </svg>
-                Provider: {{ r.providerName ?? r.nurseName }}
+                Nurse: {{ r.nurseName ?? r.providerName ?? (r.nurseFirstName + ' ' + (r.nurseLastName ?? '')) }}
+              </div>
+              <!-- Service description -->
+              <div class="req-row" *ngIf="r.serviceDescription">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                {{ r.serviceDescription }}
               </div>
 
             </div>
@@ -172,7 +180,7 @@ import { environment }     from '../../../../environments/environment';
   `,
   styles: [`
     * { box-sizing:border-box; margin:0; padding:0; }
-    .page { padding:24px;  font-family:'Cairo','Segoe UI',sans-serif; }
+    .page { width:100%; font-family:'Cairo','Segoe UI',sans-serif; }
     @media(max-width:768px){ .page{padding:14px;} }
 
     .page-hdr { margin-bottom:20px; }
@@ -225,7 +233,7 @@ import { environment }     from '../../../../environments/environment';
 
     .empty-reqs { display:flex; flex-direction:column; align-items:center; gap:8px; padding:32px 20px; background:#fff; border-radius:14px; text-align:center; color:#aaa; font-size:13px; box-shadow:0 1px 6px rgba(0,0,0,.05); }
 
-    .req-list { display:flex; flex-direction:column; gap:10px; max-height:580px; overflow-y:auto; }
+    .req-list { display:flex; flex-direction:column; gap:10px; }
     .req-card { background:#fff; border-radius:14px; padding:14px; box-shadow:0 1px 6px rgba(0,0,0,.07); border:1.5px solid #f0f0f0; }
     .req-top { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
     .req-type-ico { width:28px; height:28px; border-radius:8px; background:#FEF2F2; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
@@ -307,7 +315,7 @@ export class HomeServiceComponent implements OnInit {
   }
 
   // ── Field helpers (try every possible backend field name) ──────────────
-  rType(r: any): string { return r?.serviceType ?? r?.serviceDescription ?? 'Home Service'; }
+  rType(r: any): string { return r?.serviceDescription ?? r?.serviceType ?? r?.type ?? 'Home Service'; }
   rTime(r: any): string { return r?.requestedTime ?? r?.scheduledAt ?? r?.createdAt ?? ''; }
   rAddr(r: any): string { return r?.patientAddress ?? r?.address ?? r?.location ?? ''; }
 }

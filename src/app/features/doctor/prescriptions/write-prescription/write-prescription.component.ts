@@ -60,16 +60,15 @@ interface MedLine {
 
         <div class="field-row">
           <div class="field">
-            <label>Frequency *</label>
+            <label>Frequency (times/day) *</label>
             <select [(ngModel)]="m.frequency" class="inp">
-              <option value="">Select frequency</option>
-              <option value="Once daily">Once daily</option>
-              <option value="Twice daily">Twice daily</option>
-              <option value="Three times daily">Three times daily</option>
-              <option value="Every 8 hours">Every 8 hours</option>
-              <option value="Every 12 hours">Every 12 hours</option>
-              <option value="Weekly">Weekly</option>
-              <option value="As needed">As needed</option>
+              <option value="">Select</option>
+              <option value="1">1 × daily</option>
+              <option value="2">2 × daily</option>
+              <option value="3">3 × daily</option>
+              <option value="4">4 × daily</option>
+              <option value="6">Every 4 hours (6×)</option>
+              <option value="8">Every 3 hours (8×)</option>
             </select>
           </div>
           <div class="field">
@@ -187,11 +186,12 @@ export class WritePrescriptionComponent implements OnInit {
         patientId:    this.patientId,
         name:         m.name.trim(),
         dosage:       m.dosage.trim(),
-        frequency:    m.frequency,
+        frequency:    Number(m.frequency) || 1,  // API expects int
         duration:     m.duration.trim() || '',
         instructions: m.instructions.trim() || '',
       };
-      if (m.startDate) body.startDate = new Date(m.startDate + 'T00:00:00').toISOString();
+      // startDate is required by API
+      body.startDate = m.startDate ? new Date(m.startDate + 'T00:00:00').toISOString() : new Date().toISOString();
       if (m.endDate)   body.endDate   = new Date(m.endDate   + 'T00:00:00').toISOString();
 
       console.log(`[Prescription] POST /api/Medication/add med[${i}]`, body);

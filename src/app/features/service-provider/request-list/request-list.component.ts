@@ -62,11 +62,11 @@ function toArr(r: any): any[] {
         <div class="pat-av" [style.background]="clr(r.patientName)">{{ ini(r.patientName) }}</div>
         <div class="pat-info">
           <div class="pat-name">{{ r.patientName || 'Patient' }}</div>
-          <div class="pat-phone" *ngIf="r.patientPhone">
+          <div class="pat-phone" *ngIf="r.patientPhone || r.phoneNumber">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2">
               <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
             </svg>
-            {{ r.patientPhone }}
+            {{ r.patientPhone || r.phoneNumber }}
           </div>
         </div>
         <span class="status-badge" [class]="sCls(r.status)">{{ r.status }}</span>
@@ -79,7 +79,7 @@ function toArr(r: any): any[] {
             <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
             <circle cx="12" cy="10" r="3"/>
           </svg>
-          <span class="detail-val">{{ r.patientAddress || 'No address' }}</span>
+          <span class="detail-val">{{ r.address || r.patientAddress || '—' }}</span>
         </div>
         <div class="detail-row">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2">
@@ -87,9 +87,9 @@ function toArr(r: any): any[] {
             <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
             <line x1="3" y1="10" x2="21" y2="10"/>
           </svg>
-          <span class="detail-val">{{ (r.scheduledAt ?? r.requestedTime) | date:'MMM d, y · h:mm a' }}</span>
+          <span class="detail-val">{{ (r.requestedTime ?? r.scheduledAt) | date:'EEE, MMM d · h:mm a' }}</span>
         </div>
-        <div class="svc-tag">{{ r.serviceType || r.serviceDescription }}</div>
+        <div class="svc-tag" *ngIf="r.serviceDescription || r.serviceType">{{ r.serviceDescription || r.serviceType }}</div>
       </div>
 
       <div class="card-footer">
@@ -101,7 +101,7 @@ function toArr(r: any): any[] {
   `,
   styles: [`
     *{box-sizing:border-box;margin:0;padding:0;}
-    .page{padding:24px;max-width:900px;font-family:'Cairo','Segoe UI',sans-serif;}
+    .page{padding:24px;width:100%;font-family:'Cairo','Segoe UI',sans-serif;}
     @media(max-width:768px){.page{padding:16px;}}
     .pg-hdr{margin-bottom:16px;}
     h1{font-size:22px;font-weight:800;color:#111;}

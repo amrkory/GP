@@ -13,11 +13,13 @@ export class SignalRService implements OnDestroy {
   private _read$    = new Subject<string>();
   private _online$  = new Subject<string>();
   private _offline$ = new Subject<string>();
+  private _notif$   = new Subject<any>();
 
-  readonly message$    = this._msg$.asObservable();
-  readonly read$out    = this._read$.asObservable();
-  readonly online$out  = this._online$.asObservable();
-  readonly offline$out = this._offline$.asObservable();
+  readonly message$        = this._msg$.asObservable();
+  readonly read$out        = this._read$.asObservable();
+  readonly online$out      = this._online$.asObservable();
+  readonly offline$out     = this._offline$.asObservable();
+  readonly notification$   = this._notif$.asObservable();
 
   // Backward-compat aliases
   get messagesRead$()      { return this.read$out; }
@@ -48,6 +50,10 @@ export class SignalRService implements OnDestroy {
       this._msg$.next(msg);
     });
     this.conn.on('MessagesRead',  (uid: string) => this._read$.next(uid));
+    // Notification events
+    this.conn.on('ReceiveNotification', (n: any) => this._notif$.next(n));
+    this.conn.on('NewNotification',     (n: any) => this._notif$.next(n));
+    this.conn.on('Notification',        (n: any) => this._notif$.next(n));
     this.conn.on('UserOnline',    (uid: string) => this._online$.next(uid));
     this.conn.on('UserOffline',   (uid: string) => this._offline$.next(uid));
     this.conn.onreconnected(() => this.connected.set(true));
@@ -87,6 +93,6 @@ export class SignalRService implements OnDestroy {
 
   ngOnDestroy(): void {
     this.stop();
-    [this._msg$, this._read$, this._online$, this._offline$].forEach(s => s.complete());
+    [this._msg$, this._read$, this._online$, this._offline$, this._notif$].forEach(s => s.complete());
   }
 }

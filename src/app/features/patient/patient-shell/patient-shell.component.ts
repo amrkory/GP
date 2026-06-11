@@ -1,11 +1,12 @@
 import { Component, OnInit, inject, signal, HostListener } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule }   from '@angular/common';
 import { AuthService }    from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { SignalRService }     from '../../../core/services/signalr.service';
 import { ChatService }        from '../../../core/services/chat.service';
-import { ProfileService }     from '../../../core/services/profile.service';
 
 @Component({
   selector: 'app-patient-shell',
@@ -26,9 +27,8 @@ import { ProfileService }     from '../../../core/services/profile.service';
         </div>
 
         <div class="sidebar-user">
-          <div class="user-av-wrap" routerLink="/patient/profile" style="cursor:pointer">
-            <img *ngIf="photoUrl()" [src]="photoUrl()" class="user-av-img" alt="avatar"
-                 (error)="photoUrl.set('')" />
+          <div style="width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;">
+            <img *ngIf="photoUrl()" [src]="photoUrl()" style="width:36px;height:36px;border-radius:50%;object-fit:cover;display:block;" alt=""/>
             <div *ngIf="!photoUrl()" class="user-avatar">{{ initials() }}</div>
           </div>
           <div class="user-info">
@@ -163,8 +163,7 @@ import { ProfileService }     from '../../../core/services/profile.service';
               <span class="notif-dot" *ngIf="unreadCount() > 0">{{ unreadCount() }}</span>
             </button>
             <button class="header-avatar" routerLink="/patient/profile">
-              <img *ngIf="photoUrl()" [src]="photoUrl()" class="hav-img" alt="avatar"
-                   (error)="photoUrl.set('')" />
+              <img *ngIf="photoUrl()" [src]="photoUrl()" style="width:36px;height:36px;border-radius:50%;object-fit:cover;display:block;" alt=""/>
               <span *ngIf="!photoUrl()">{{ initials() }}</span>
             </button>
           </div>
@@ -248,13 +247,11 @@ import { ProfileService }     from '../../../core/services/profile.service';
       top: 0; left: 0; bottom: 0;
       z-index: 50;
       overflow-y: auto;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
+      scrollbar-width:none; -ms-overflow-style:none;
       transition: transform .25s ease;
     }
 
-    .sidebar::-webkit-scrollbar { display: none; }
-
+    .sidebar::-webkit-scrollbar{display:none;}
     .sidebar-brand {
       display: flex;
       align-items: center;
@@ -287,14 +284,6 @@ import { ProfileService }     from '../../../core/services/profile.service';
       gap: 10px;
       padding: 14px 16px;
       border-bottom: 1px solid var(--border, #E8ECF0);
-    }
-    .user-av-wrap {
-      width: 36px; height: 36px; flex-shrink: 0;
-      border-radius: 50%; overflow: hidden;
-    }
-    .user-av-img {
-      width: 36px; height: 36px;
-      border-radius: 50%; object-fit: cover; display: block;
     }
     .user-avatar {
       width: 36px; height: 36px;
@@ -402,23 +391,18 @@ import { ProfileService }     from '../../../core/services/profile.service';
       display: flex; align-items: center; justify-content: center;
     }
     .header-avatar {
-      width: 36px; height: 36px;
+      width: 34px; height: 34px;
       border-radius: 50%;
       background: #D84040; color: #fff;
       font-size: 12px; font-weight: 700;
       border: none; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      overflow: hidden; padding: 0; flex-shrink: 0;
-    }
-    .hav-img {
-      width: 36px; height: 36px;
-      border-radius: 50%; object-fit: cover; display: block;
     }
 
     /* Page content */
     .page-content {
       flex: 1;
       padding: 24px;
+      max-width: 1200px;
       width: 100%;
     }
 
@@ -514,18 +498,17 @@ import { ProfileService }     from '../../../core/services/profile.service';
       .app-layout.sidebar-collapsed .main-area { margin-left: 64px; }
       .app-layout.sidebar-collapsed .nav-link { justify-content: center; padding: 10px; }
       .app-layout.sidebar-collapsed .sidebar-user { justify-content: center; padding: 14px 0; }
-      .app-layout.sidebar-collapsed .sidebar-brand { justify-content: center; padding: 16px 0; }
+      .app-layout.sidebar-collapsed .sidebar::-webkit-scrollbar{display:none;}
+    .sidebar-brand { justify-content: center; padding: 16px 0; }
     }
   `],
 })
 export class PatientShellComponent implements OnInit {
   private auth         = inject(AuthService);
   private notifService = inject(NotificationService);
-  private profileSvc   = inject(ProfileService);
-
-  photoUrl     = signal('');
-  totalUnread  = 0;
-
+  private http         = inject(HttpClient);
+  photoUrl         = signal('');
+  totalUnread      = 0;
   sidebarCollapsed = false;
   mobileOpen       = false;
 
@@ -559,15 +542,10 @@ export class PatientShellComponent implements OnInit {
     this.signalRSvc.startConnection();
     this.signalRSvc.message$.subscribe(() => this.totalUnread++);
     this.notifService.load().subscribe();
-
-    // Load profile photo
-    this.profileSvc.getPatientData().subscribe({
-      next: (res: any) => {
-        const d = res?.data ?? res;
-        const pic = d?.profilePictureUrl ?? d?.avatarUrl ?? '';
-        if (pic) this.photoUrl.set(pic);
-      },
+    this.http.get<any>(`${environment.apiUrl}/Profile/patientData`).subscribe({
+      next: (res: any) => { const d = res?.data ?? res; const p = d?.profilePictureUrl ?? d?.avatarUrl ?? ''; if (p) this.photoUrl.set(p); },
       error: () => {}
     });
+    window.addEventListener('wateen:patient:photo', (e: any) => { if (e?.detail) this.photoUrl.set(e.detail); });
   }
 }

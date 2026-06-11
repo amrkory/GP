@@ -3,6 +3,8 @@ import {
   ViewChild, ElementRef, AfterViewChecked,
   signal, inject
 } from '@angular/core';
+import { HttpClient }    from '@angular/common/http';
+import { environment }    from '../../../../../environments/environment';
 import { CommonModule }  from '@angular/common';
 import { FormsModule }   from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
@@ -21,53 +23,6 @@ function getBody(raw: any): string {
   if (typeof raw.content === 'string' && raw.content)     return raw.content;
   if (typeof raw.messageContent === 'string')              return raw.messageContent;
   return '';
-}
-
-/**
- * fmtTime — formats any sentAt string as Egypt local time (Africa/Cairo = UTC+2/+3)
- * Handles all server formats:
- *   "2024-01-15T10:30:00"    (no Z → server local, treat as UTC)
- *   "2024-01-15T10:30:00Z"   (UTC)
- *   "2024-01-15T12:30:00+02:00" (already Egypt time)
- */
-export function fmtTime(iso: string): string {
-  if (!iso) return '';
-  // If no timezone suffix, backend is sending UTC without Z — add it
-  let src = iso;
-  if (!src.endsWith('Z') && !src.includes('+') && !/T.*-\d{2}:\d{2}/.test(src)) {
-    src = src + 'Z';
-  }
-  try {
-    return new Intl.DateTimeFormat('en-US', {
-      hour:     'numeric',
-      minute:   '2-digit',
-      hour12:   true,
-      timeZone: 'Africa/Cairo',   // always Egypt time regardless of laptop settings
-    }).format(new Date(src));
-  } catch {
-    return new Date(src).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  }
-}
-
-/**
- * fmtDay — day label for message groups in Egypt timezone
- */
-export function fmtDay(iso: string): string {
-  if (!iso) return 'Today';
-  let src = iso;
-  if (!src.endsWith('Z') && !src.includes('+') && !/T.*-\d{2}:\d{2}/.test(src)) src = src + 'Z';
-  const d    = new Date(src);
-  const now  = new Date();
-  // Compare dates in Egypt timezone
-  const opts: Intl.DateTimeFormatOptions = { timeZone: 'Africa/Cairo', year: 'numeric', month: '2-digit', day: '2-digit' };
-  const dStr   = new Intl.DateTimeFormat('en-CA', opts).format(d);
-  const nowStr = new Intl.DateTimeFormat('en-CA', opts).format(now);
-  const ystStr = new Intl.DateTimeFormat('en-CA', opts).format(new Date(now.getTime() - 86_400_000));
-  if (dStr === nowStr) return 'Today';
-  if (dStr === ystStr) return 'Yesterday';
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'long', month: 'short', day: 'numeric', timeZone: 'Africa/Cairo'
-  }).format(d);
 }
 
 function toMsg(raw: any): Msg {
@@ -118,12 +73,15 @@ function toMsg(raw: any): Msg {
     <ng-container *ngFor="let g of grouped()">
       <div class="dsep"><span>{{ g.date }}</span></div>
       <div class="mr" *ngFor="let m of g.msgs" [class.mine]="isMine(m)">
-        <div class="mav" *ngIf="!isMine(m)" [style.background]="clr(pName())">{{ ini(pName()) }}</div>
+        <div class="mav-wrap" *ngIf="!isMine(m)">
+          <img *ngIf="otherPhotoUrl()" [src]="otherPhotoUrl()" class="mav-img" alt=""/>
+          <div *ngIf="!otherPhotoUrl()" class="mav" [style.background]="clr(pName())">{{ ini(pName()) }}</div>
+        </div>
         <div class="bw" [class.mine]="isMine(m)">
           <div class="b" [class.mine]="isMine(m)" [class.tmp]="isTmp(m)">
             <p>{{ m.body }}</p>
             <div class="bf">
-              <span class="bt">{{ fmtTime(m.sentAt) }}</span>
+              <span class="bt">{{ m.sentAt | date:'h:mm a' }}</span>
               <span class="tks" *ngIf="isMine(m)">
                 <svg *ngIf="m.isRead" width="14" height="9" viewBox="0 0 22 14" fill="none">
                   <path d="M1 7L5 11L13 3" stroke="#93C5FD" stroke-width="2" stroke-linecap="round"/>
@@ -161,7 +119,7 @@ function toMsg(raw: any): Msg {
   `,
   styles: [`
     *{box-sizing:border-box;margin:0;padding:0;}
-    .cw{display:flex;flex-direction:column;height:calc(100vh - 60px);background:#F0F2F5;font-family:'Cairo','Segoe UI',sans-serif;max-width:900px;}
+    .cw{display:flex;flex-direction:column;height:calc(100vh - 60px);background:#F0F2F5;font-family:'Cairo','Segoe UI',sans-serif;width:100%;}
     @media(max-width:768px){.cw{height:calc(100dvh - 56px);}}
     .hdr{display:flex;align-items:center;gap:10px;padding:10px 16px;background:#fff;border-bottom:1px solid #F0F2F5;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.04);}
     .back{background:none;border:none;cursor:pointer;color:#6B7280;padding:6px;border-radius:8px;display:flex;}
@@ -173,7 +131,8 @@ function toMsg(raw: any): Msg {
     .dot{width:7px;height:7px;border-radius:50%;background:#D0D5DD;flex-shrink:0;}
     .dot.on{background:#22c55e;}
     .vpbtn{padding:6px 12px;border:1.5px solid #E8ECF0;border-radius:10px;text-decoration:none;font-size:12px;font-weight:700;color:#374151;white-space:nowrap;flex-shrink:0;}
-    .msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:2px;}
+    .msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:2px;scrollbar-width:none;-ms-overflow-style:none;}
+    .msgs::-webkit-scrollbar{display:none;}
     .sp-wrap{display:flex;justify-content:center;padding:32px;}
     .sp{width:22px;height:22px;border:2.5px solid #E8ECF0;border-top-color:#2D4A8A;border-radius:50%;animation:sp .7s linear infinite;}
     @keyframes sp{to{transform:rotate(360deg);}}
@@ -183,7 +142,9 @@ function toMsg(raw: any): Msg {
     .dsep span{white-space:nowrap;}
     .mr{display:flex;align-items:flex-end;gap:8px;margin-bottom:3px;}
     .mr.mine{flex-direction:row-reverse;}
+    .mav-wrap{width:28px;height:28px;flex-shrink:0;}
     .mav{width:28px;height:28px;border-radius:50%;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .mav-img{width:28px;height:28px;border-radius:50%;object-fit:cover;}
     .bw{max-width:70%;}.bw.mine{margin-left:auto;}
     .b{padding:9px 13px;border-radius:16px;word-break:break-word;border-bottom-left-radius:3px;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.07);}
     .b.mine{background:#2D4A8A;border-bottom-left-radius:16px;border-bottom-right-radius:3px;}
@@ -208,31 +169,31 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
   @ViewChild('msgBox') msgBox!: ElementRef<HTMLElement>;
   @ViewChild('inp')    inp!:    ElementRef<HTMLInputElement>;
 
+  private http     = inject(HttpClient);
   private chatSvc  = inject(ChatService);
   readonly signalR = inject(SignalRService);
   private auth     = inject(AuthService);
   private route    = inject(ActivatedRoute);
   readonly router  = inject(Router);
 
-  loading = signal(true);
-  msgs    = signal<Msg[]>([]);
-  pName   = signal('');
+  loading       = signal(true);
+  msgs          = signal<Msg[]>([]);
+  pName         = signal('');
+  otherPhotoUrl = signal('');
   online  = signal(false);
   draft   = '';
   foc     = false;
   otherId = '';
   myId    = '';        // resolved after history loads
 
-  // isMine: primary check is senderId === myId (most reliable)
-  // fallback to senderId !== otherId when myId not yet resolved
+  // ── isMine: uses otherId NOT myId ─────────────────────────────────
+  // A message is MINE if its senderId is NOT the other person.
+  // This is 100% reliable — we always know otherId from the URL param.
   isMine(m: Msg): boolean {
-    if (this.isTmp(m)) return true;
-    if (this.myId) return m.senderId === this.myId;
-    return m.senderId !== this.otherId;
+    if (this.isTmp(m)) return true;               // tmp always mine
+    return m.senderId !== this.otherId;            // not theirs = mine
   }
   isTmp(m: Msg): boolean { return m.id.startsWith('tmp_'); }
-  // Expose standalone functions for template use
-  readonly fmtTime = fmtTime;
 
   ini(n: string): string {
     const p = (n||'').trim().split(' ');
@@ -244,13 +205,19 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
   grouped(): {date:string;msgs:Msg[]}[] {
     const m = new Map<string,Msg[]>();
     for (const msg of this.msgs()) {
-      const d = fmtDay(msg.sentAt);
+      const d = this.dl(msg.sentAt);
       if (!m.has(d)) m.set(d,[]);
       m.get(d)!.push(msg);
     }
     return [...m.entries()].map(([date,msgs]) => ({date,msgs}));
   }
-  // day label now handled by fmtDay() standalone function
+  private dl(iso: string): string {
+    const d = new Date(iso), now = new Date();
+    const diff = Math.floor((now.getTime()-d.getTime())/86400000);
+    if (diff===0) return 'Today';
+    if (diff===1) return 'Yesterday';
+    return d.toLocaleDateString([],{weekday:'long',month:'short',day:'numeric'});
+  }
 
   private subs: Subscription[] = [];
   private sp = false;
@@ -312,7 +279,7 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
     // Real-time
     this.subs.push(
       this.signalR.message$.subscribe((raw: any) => {
-        const m   = toMsg(raw);  // sentAt forced to UTC inside toMsg
+        const m   = toMsg(raw);
         const sid = m.senderId;
         const rid = m.receiverId;
 
@@ -354,6 +321,19 @@ export class ChatRoomComponent implements OnInit, OnDestroy, AfterViewChecked {
     );
 
     this.signalR.start();
+    // Load other person's photo
+    if (this.otherId) {
+      this.http.get<any>(`${environment.apiUrl}/Profile/patientData`, {
+        params: { userId: this.otherId }
+      }).subscribe({
+        next: (res: any) => {
+          const d = res?.data ?? res;
+          const pic = d?.profilePictureUrl ?? d?.avatarUrl ?? '';
+          if (pic) this.otherPhotoUrl.set(pic);
+        },
+        error: () => {}
+      });
+    }
   }
 
   send(): void {

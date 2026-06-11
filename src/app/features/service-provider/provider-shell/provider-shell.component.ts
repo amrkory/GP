@@ -1,9 +1,10 @@
-import { Component, signal, OnInit, inject, HostListener } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
+import { Component, OnInit, inject, signal, HostListener } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule }        from '@angular/common';
 import { AuthService }         from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
-import { ProfileService } from '../../../core/services/profile.service';
 
 @Component({
   selector: 'app-provider-shell',
@@ -24,8 +25,8 @@ import { ProfileService } from '../../../core/services/profile.service';
           <span class="role-chip">Provider</span>
         </div>
         <div class="sidebar-user">
-          <div class="user-av-wrap">
-            <img *ngIf="photoUrl()" [src]="photoUrl()" class="user-av-img" alt="avatar" (error)="photoUrl.set('')"/>
+          <div style="width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;">
+            <img *ngIf="photoUrl()" [src]="photoUrl()" style="width:36px;height:36px;border-radius:50%;object-fit:cover;display:block;" alt=""/>
             <div *ngIf="!photoUrl()" class="user-avatar">{{ initials() }}</div>
           </div>
           <div class="user-info">
@@ -73,7 +74,7 @@ import { ProfileService } from '../../../core/services/profile.service';
               <span class="notif-dot" *ngIf="unreadCount() > 0">{{ unreadCount() }}</span>
             </button>
             <button class="hdr-avatar" routerLink="/provider/profile">
-              <img *ngIf="photoUrl()" [src]="photoUrl()" class="hav-img" alt="avatar" (error)="photoUrl.set('')"/>
+              <img *ngIf="photoUrl()" [src]="photoUrl()" style="width:36px;height:36px;border-radius:50%;object-fit:cover;display:block;" alt=""/>
               <span *ngIf="!photoUrl()">{{ initials() }}</span>
             </button>
           </div>
@@ -122,10 +123,7 @@ import { ProfileService } from '../../../core/services/profile.service';
     .role-chip  { margin-left:auto; font-size:10px; background:#E1F5EE; color:#0F6E56; padding:2px 8px; border-radius:6px; font-weight:700; white-space:nowrap; }
     .close-btn  { background:none; border:none; cursor:pointer; color:#888; margin-left:auto; }
     .sidebar-user { display:flex; align-items:center; gap:10px; padding:14px 16px; border-bottom:1px solid #E8ECF0; }
-    .user-av-wrap { width:36px; height:36px; flex-shrink:0; }
-    .user-av-img  { width:36px; height:36px; border-radius:50%; object-fit:cover; border:2px solid rgba(255,255,255,.2); }
-    .user-avatar  { width:36px; height:36px; border-radius:50%; background:#0F6E56; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; }
-    .hav-img      { width:100%; height:100%; border-radius:50%; object-fit:cover; }
+    .user-avatar { width:36px; height:36px; border-radius:50%; background:#0F6E56; color:#fff; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .user-name  { font-size:13px; font-weight:600; color:#111; }
     .user-role  { font-size:11px; color:#0F6E56; font-weight:500; margin-top:1px; }
     .sidebar-nav { flex:1; padding:12px 10px; display:flex; flex-direction:column; gap:2px; }
@@ -179,9 +177,9 @@ import { ProfileService } from '../../../core/services/profile.service';
 export class ProviderShellComponent implements OnInit {
   private auth         = inject(AuthService);
   private notifService = inject(NotificationService);
-  private profileSvc   = inject(ProfileService);
-  photoUrl             = signal('');
-  sidebarCollapsed     = false;
+  private http         = inject(HttpClient);
+  photoUrl         = signal('');
+  sidebarCollapsed = false;
   mobileOpen       = false;
   unreadCount()  { return this.notifService.unreadCount(); }
   initials(): string { const u = this.auth.currentUser() as any; return ((u?.given_name?.[0]??'')+(u?.family_name?.[0]??'')).toUpperCase(); }
@@ -191,13 +189,10 @@ export class ProviderShellComponent implements OnInit {
   logout() { this.auth.logout(); }
   ngOnInit(): void {
     this.notifService.load().subscribe();
-    this.profileSvc.getNurseData().subscribe({
-      next: (res: any) => {
-        const d = res?.data ?? res;
-        const pic = d?.profilePictureUrl ?? d?.avatarUrl ?? '';
-        if (pic) this.photoUrl.set(pic);
-      },
+    this.http.get<any>(`${environment.apiUrl}/Profile/nurseData`).subscribe({
+      next: (res: any) => { const d = res?.data ?? res; const p = d?.profilePictureUrl ?? d?.avatarUrl ?? ''; if (p) this.photoUrl.set(p); },
       error: () => {}
     });
+    window.addEventListener('wateen:nurse:photo', (e: any) => { if (e?.detail) this.photoUrl.set(e.detail); });
   }
 }

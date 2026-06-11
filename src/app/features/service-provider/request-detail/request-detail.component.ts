@@ -37,21 +37,21 @@ function toArr(r: any): any[] {
 
     <!-- Patient card -->
     <div class="patient-card">
-      <div class="pat-av" [style.background]="clr(req()!.patientName)">{{ ini(req()!.patientName) }}</div>
+      <div class="pat-av" [style.background]="clr(getName())">{{ ini(getName()) }}</div>
       <div class="pat-info">
-        <div class="pat-name">{{ req()!.patientName || 'Patient' }}</div>
-        <div class="pat-phone" *ngIf="req()!.patientPhone">
+        <div class="pat-name">{{ getName() }}</div>
+        <div class="pat-phone" *ngIf="getPhone()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2">
             <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
           </svg>
-          {{ req()!.patientPhone }}
+          {{ getPhone() }}
         </div>
-        <div class="pat-addr" *ngIf="req()!.patientAddress">
+        <div class="pat-addr" *ngIf="getAddress()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2">
             <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
             <circle cx="12" cy="10" r="3"/>
           </svg>
-          {{ req()!.patientAddress }}
+          {{ getAddress() }}
         </div>
       </div>
       <span class="status-pill" [class]="sCls(req()!.status)">{{ req()!.status }}</span>
@@ -169,7 +169,7 @@ function toArr(r: any): any[] {
   `,
   styles: [`
     *{box-sizing:border-box;margin:0;padding:0;}
-    .page{padding:24px;max-width:680px;font-family:'Cairo','Segoe UI',sans-serif;}
+    .page{width:100%;font-family:'Cairo','Segoe UI',sans-serif;}
     @media(max-width:768px){.page{padding:16px;}}
     .top-bar{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
     .back-btn{background:none;border:none;cursor:pointer;color:#6B7280;padding:6px;border-radius:8px;display:flex;}
@@ -252,6 +252,14 @@ export class RequestDetailComponent implements OnInit {
   clr(n: string): string { return this.C[(n?.charCodeAt(0)||0)%this.C.length]; }
   sCls(s: string): string { return (s??'').toLowerCase(); }
 
+  // ── Field helpers ───────────────────────────────────────────────────────
+  getName():   string { const r = this.req(); return r?.patientName ?? r?.patient?.name ?? `${r?.patient?.firstName??''} ${r?.patient?.lastName??''}`.trim() || 'Patient'; }
+  getPhone():  string { const r = this.req(); return r?.patientPhone ?? r?.patient?.phoneNumber ?? r?.patient?.phone ?? r?.phoneNumber ?? ''; }
+  getAddress():string { const r = this.req(); return r?.address ?? r?.patientAddress ?? r?.patient?.address ?? r?.location ?? ''; }
+  getTime():   string { const r = this.req(); return r?.requestedTime ?? r?.scheduledAt ?? r?.createdAt ?? ''; }
+  getDesc():   string { const r = this.req(); return r?.serviceDescription ?? r?.description ?? r?.notes ?? ''; }
+  getService():string { const r = this.req(); return r?.serviceType ?? r?.serviceName ?? r?.type ?? ''; }
+
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id') ?? '';
     // Load all requests and find this one by id
@@ -260,6 +268,7 @@ export class RequestDetailComponent implements OnInit {
     }).subscribe({
       next: (res:any) => {
         const list = Array.isArray(res) ? res : res?.data?.items ?? res?.data ?? [];
+        console.log('[RequestDetail] first:', list[0]);
         const found = list.find((r:any) => String(r.id) === id);
         this.req.set(found ?? null);
         this.loading.set(false);

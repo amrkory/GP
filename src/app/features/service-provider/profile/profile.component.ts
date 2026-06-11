@@ -9,6 +9,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule }   from '@angular/common';
 import { FormsModule }    from '@angular/forms';
 import { AuthService }    from '../../../core/services/auth.service';
+import { UserPhotoService } from '../../../core/services/user-photo.service';
 import { ProfileService } from '../../../core/services/profile.service';
 
 @Component({
@@ -207,8 +208,9 @@ import { ProfileService } from '../../../core/services/profile.service';
   `]
 })
 export class ProviderProfileComponent implements OnInit {
-  private auth = inject(AuthService);
-  private svc  = inject(ProfileService);
+  private auth     = inject(AuthService);
+  private svc      = inject(ProfileService);
+  private photoSvc = inject(UserPhotoService);
 
   loading    = signal(true);
   editing    = signal(false);
@@ -313,18 +315,46 @@ export class ProviderProfileComponent implements OnInit {
   onPhoto(e: Event): void {
     const file = (e.target as HTMLInputElement).files?.[0];
     if (!file) return;
+
+    // Show preview immediately
+    const reader = new FileReader();
+    reader.onload = (ev: any) => this.avatarUrl.set(ev.target.result);
+    reader.readAsDataURL(file);
+
     this.uploading.set(true);
+
+    // PUT /api/Profile/profile-picture
     this.svc.uploadPicture(file).subscribe({
       next: (res: any) => {
-        const url = res?.profilePictureUrl ?? res?.data?.profilePictureUrl
-                 ?? res?.data?.url ?? (typeof res?.data === 'string' ? res.data : '');
+        console.log('[nurseProfile] upload res:', res);
+        const url =
+          res?.profilePictureUrl       ??
+          res?.data?.profilePictureUrl ??
+          res?.data?.url               ??
+          res?.url                     ??
+          res?.imageUrl                ??
+          (typeof res?.data === 'string' && (res.data as string).startsWith('http') ? res.data : null) ??
+          (typeof res === 'string'       && (res as string).startsWith('http')      ? res        : null);
+
         if (url) {
+          console.log('[nurseProfile] photo URL:', url);
           this.avatarUrl.set(url);
-          this.svc.updateDoctorNurse({ profilePictureUrl: url }).subscribe();
+          this.photoSvc.set(url);
+          // Persist URL in profile
+          this.svc.updateDoctorNurse({ profilePictureUrl: url, firstName: this.firstName||undefined, lastName: this.lastName||undefined, email: this.email||undefined }).subscribe({ next: () => console.log('[NurseProfile] URL saved'), error: (e:any) => console.error('[NurseProfile] save failed', e) });
+          // Notify shell to update sidebar/header
+          window.dispatchEvent(new CustomEvent('wateen:photo', { detail: url }));
+        } else {
+          console.warn('[nurseProfile] no URL in response — reloading profile');
+          this.svc.getNurseData().subscribe({ next: (r:any) => { const d=r?.data??r; const p=d?.profilePictureUrl??d?.avatarUrl??''; if(p) this.avatarUrl.set(p); }, error:()=>{} });
         }
         this.uploading.set(false);
       },
-      error: () => this.uploading.set(false)
+      error: (err: any) => {
+        console.error('[nurseProfile] upload error:', err);
+        this.uploading.set(false);
+        this.avatarUrl.set('');
+      }
     });
   }
 

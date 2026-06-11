@@ -12,9 +12,12 @@ export interface CreatePrescriptionDto {
 }
 
 export interface AssignChecklistDto {
-  patientId: string;
-  title: string;
-  tasks: any[];
+  patientId:       string;
+  taskTitle:       string;
+  taskDescription: string;
+  dueDate:         string;  // ISO
+  priority:        'High' | 'Medium' | 'Low';
+  category:        'Test' | 'Appointment' | 'Medication' | 'Other';
 }
 
 @Injectable({ providedIn: 'root' })
@@ -62,8 +65,8 @@ export class DoctorService {
     return this.http.post<any>(`${this.api}/Appointment/book`, dto); // placeholder
   }
 
-  // Checklists
+  // Checklists — POST /api/MedicalTask/add
   assignChecklist(dto: AssignChecklistDto): Observable<any> {
-    return this.http.post<any>(`${this.api}/Appointment/book`, dto); // placeholder
+    return this.http.post<any>(`${this.api}/MedicalTask/add`, dto);
   }
 }

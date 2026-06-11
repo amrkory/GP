@@ -65,7 +65,7 @@ export class MedicalService {
   // ── Medical Tasks ─────────────────────────────────────────────────────────
 
   /** Doctor: POST /api/MedicalTask/add */
-  addTask(body: { patientId:string; title:string; description?:string; dueDate?:string }): Observable<any> {
+  addTask(body: { patientId:string; taskTitle:string; taskDescription?:string; dueDate:string; priority:string; category:string; [key:string]:any }): Observable<any> {
     return this.http.post<any>(`${this.api}/MedicalTask/add`, body);
   }
 
@@ -89,6 +89,21 @@ export class MedicalService {
   /** Doctor: DELETE /api/MedicalTask/delete/{taskId} */
   deleteTask(taskId: string): Observable<any> {
     return this.http.delete<any>(`${this.api}/MedicalTask/delete/${taskId}`);
+  }
+
+  /** PUT /api/MedicalTask/update/{taskId} */
+  updateTask(taskId: string, body: {
+    taskTitle?: string; taskDescription?: string;
+    dueDate?: string; priority?: string; category?: string;
+  }): Observable<any> {
+    return this.http.put<any>(`${this.api}/MedicalTask/update/${taskId}`, body);
+  }
+
+  /** POST /api/MedicalRecord/upload-file — returns fileUrl */
+  uploadRecordFile(file: File): Observable<any> {
+    const form = new FormData();
+    form.append('file', file);
+    return this.http.post<any>(`${this.api}/MedicalRecord/upload-file`, form);
   }
 
   // ── Medications ───────────────────────────────────────────────────────────

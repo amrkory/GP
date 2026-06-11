@@ -2,6 +2,7 @@ import { Component, inject, signal, ViewChild, ElementRef, AfterViewChecked } fr
 import { CommonModule }  from '@angular/common';
 import { FormsModule }   from '@angular/forms';
 import { HttpClient }    from '@angular/common/http';
+import { AiService }     from '../../../core/services/ai.service';
 import { environment }   from '../../../../environments/environment';
 
 interface ChatMessage { role: 'user' | 'assistant'; text: string; time: Date; results?: DiagResult[]; redFlags?: string[]; }
@@ -137,8 +138,16 @@ interface DiagResult  { predicted_disease: string; doctor: string; overview: str
 
       <!-- Input -->
       <div class="input-bar">
+        <!-- Image upload for food calorie detection -->
+        <label class="img-btn" title="Upload food image for calorie analysis">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <input type="file" accept="image/*" (change)="onImage($event)" hidden [disabled]="thinking()" />
+        </label>
         <input [(ngModel)]="inputText"
-               placeholder="Describe your symptoms..."
+               placeholder="Describe symptoms or upload food image..."
                class="msg-input"
                (keydown.enter)="onEnter($event)"
                [disabled]="thinking()" />
@@ -151,7 +160,7 @@ interface DiagResult  { predicted_disease: string; doctor: string; overview: str
   `,
   styles: [`
     * { box-sizing: border-box; }
-    .chat-page { display:flex; flex-direction:column; height:calc(100vh - 60px); background:#F7F8FA;  margin:0 auto; font-family:'Cairo','Segoe UI',sans-serif; }
+    .chat-page { display:flex; flex-direction:column; height:calc(100vh - 60px); background:#F7F8FA; max-width:680px; margin:0 auto; font-family:'Cairo','Segoe UI',sans-serif; }
     @media(max-width:768px){ .chat-page { height:calc(100vh - 56px); } }
 
     /* Header */
@@ -230,6 +239,10 @@ interface DiagResult  { predicted_disease: string; doctor: string; overview: str
     /* Diagnosis note */
     .diag-note { padding:10px 16px; font-size:11px; color:#999; background:#FAFAFA; border-top:1px solid #f5f5f5; line-height:1.5; }
 
+    /* Image upload button */
+    .img-btn { width:38px; height:38px; border-radius:10px; background:#F4F6FA; border:1.5px solid #E8ECF0; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#6B7280; flex-shrink:0; transition:all .15s; }
+    .img-btn:hover { background:#EEF2FF; color:#2D4A8A; border-color:#2D4A8A; }
+
     /* Input */
     .input-bar { display:flex; align-items:center; gap:8px; padding:10px 12px; background:#fff; border-top:1px solid #f0f0f0; flex-shrink:0; }
     .msg-input { flex:1; padding:11px 16px; border:1.5px solid #e8e8e8; border-radius:24px; font-size:14px; outline:none; font-family:inherit; background:#F7F8FA; }
@@ -243,7 +256,8 @@ interface DiagResult  { predicted_disease: string; doctor: string; overview: str
 export class AiAssistantComponent implements AfterViewChecked {
   @ViewChild('msgContainer') msgContainer?: ElementRef;
 
-  private http = inject(HttpClient);
+  private http   = inject(HttpClient);
+  private aiSvc  = inject(AiService);
 
   messages     = signal<ChatMessage[]>([]);
   thinking     = signal(false);
@@ -315,6 +329,44 @@ export class AiAssistantComponent implements AfterViewChecked {
 
   fmt(text: string): string {
     return text.replace(/\n/g, '<br>').replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  }
+
+  onImage(e: Event): void {
+    const file = (e.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    // Add user message showing the image name
+    this.messages.update(m => [...m, {
+      role: 'user',
+      text: `📷 Food image: ${file.name}`,
+      time: new Date()
+    }]);
+    this.thinking.set(true);
+    this.shouldScroll = true;
+
+    // POST /api/AI/GetAICaloriesByImage
+    this.aiSvc.getCaloriesByImage(file).subscribe({
+      next: (res: any) => {
+        this.thinking.set(false);
+        const text = res?.result ?? res?.message ?? res?.data ?? res?.calories
+          ?? (typeof res === 'string' ? res : null)
+          ?? 'Could not analyze the image. Please try again.';
+        this.messages.update(m => [...m, {
+          role: 'assistant',
+          text: typeof text === 'object' ? JSON.stringify(text, null, 2) : String(text),
+          time: new Date()
+        }]);
+        this.shouldScroll = true;
+      },
+      error: (err: any) => {
+        this.thinking.set(false);
+        this.messages.update(m => [...m, {
+          role: 'assistant',
+          text: err?.error?.message ?? 'Image analysis failed. Please try again.',
+          time: new Date()
+        }]);
+      }
+    });
   }
 
   ngAfterViewChecked(): void {

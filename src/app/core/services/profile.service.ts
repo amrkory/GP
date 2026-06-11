@@ -1,6 +1,7 @@
 import { Injectable }  from '@angular/core';
 import { HttpClient }  from '@angular/common/http';
 import { Observable }  from 'rxjs';
+import { tap }         from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
@@ -9,7 +10,11 @@ export class ProfileService {
   constructor(private http: HttpClient) {}
 
   // ── GET ──────────────────────────────────────────────────────────────────────
-  getPatientData(): Observable<any>  { return this.http.get<any>(`${this.api}/Profile/patientData`); }
+  getPatientData(userId?: string): Observable<any> {
+    const params: any = {};
+    if (userId) params['userId'] = userId;
+    return this.http.get<any>(`${this.api}/Profile/patientData`, { params });
+  }
   getDoctorData(): Observable<any>   { return this.http.get<any>(`${this.api}/Profile/doctorData`); }
   getNurseData(): Observable<any>    { return this.http.get<any>(`${this.api}/Profile/nurseData`); }
   getGenericProfile(): Observable<any> { return this.http.get<any>(`${this.api}/Profile`); }
@@ -27,7 +32,7 @@ export class ProfileService {
   }
 
   // ── PUT doctorNurse — exact fields from Swagger ───────────────────────────
-  // { firstName, lastName, email, profilePictureUrl, education, certifications }
+  // { firstName, lastName, email, profilePictureUrl }
   updateDoctorNurse(dto: {
     firstName?: string; lastName?: string;
     email?: string; profilePictureUrl?: string;
@@ -36,15 +41,12 @@ export class ProfileService {
     return this.http.put<any>(`${this.api}/Profile/doctorNurse`, dto);
   }
 
-  // ── GET patientData with optional userId ────────────────────────────────────
-  getPatientDataById(userId: string): Observable<any> {
-    return this.http.get<any>(`${this.api}/Profile/patientData`, { params: { userId } });
-  }
-
   // ── PUT profile-picture — multipart/form-data ─────────────────────────────
   uploadPicture(file: File): Observable<any> {
     const form = new FormData();
     form.append('file', file);
-    return this.http.put<any>(`${this.api}/Profile/profile-picture`, form);
+    return this.http.put<any>(`${this.api}/Profile/profile-picture`, form).pipe(
+      tap((res: any) => console.log('[ProfileService] uploadPicture response:', res))
+    );
   }
 }

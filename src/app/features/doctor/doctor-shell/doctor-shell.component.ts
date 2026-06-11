@@ -215,11 +215,12 @@ export class DoctorShellComponent implements OnInit {
 
   ngOnInit(): void {
     this.notifService.load().subscribe();
+    window.addEventListener('wateen:doctor:photo', (e: any) => { if (e?.detail) this.avatarUrl.set(e.detail); });
     this.profSvc.getDoctorData().subscribe({
       next: (res: any) => {
         const p = res?.data ?? res;
         const url = p?.profilePictureUrl ?? p?.avatarUrl ?? p?.photoUrl ?? '';
-        if (url) this.avatarUrl.set(url);
+        if (url) { this.avatarUrl.set(url); }
       }, error: () => {}
     });
   }

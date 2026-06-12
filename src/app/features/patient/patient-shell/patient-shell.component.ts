@@ -4,6 +4,7 @@ import { environment } from '../../../../environments/environment';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule }   from '@angular/common';
 import { AuthService }    from '../../../core/services/auth.service';
+import { NotificationBellComponent } from '../../../core/components/notification-bell.component';
 import { NotificationService } from '../../../core/services/notification.service';
 import { SignalRService }     from '../../../core/services/signalr.service';
 import { ChatService }        from '../../../core/services/chat.service';
@@ -11,7 +12,7 @@ import { ChatService }        from '../../../core/services/chat.service';
 @Component({
   selector: 'app-patient-shell',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, NotificationBellComponent, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="app-layout" [class.sidebar-collapsed]="sidebarCollapsed">
 
@@ -155,13 +156,7 @@ import { ChatService }        from '../../../core/services/chat.service';
           <div class="header-spacer"></div>
 
           <div class="header-actions">
-            <button class="header-icon-btn" routerLink="/patient/profile">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-              </svg>
-              <span class="notif-dot" *ngIf="unreadCount() > 0">{{ unreadCount() }}</span>
-            </button>
+            <app-notification-bell></app-notification-bell>
             <button class="header-avatar" routerLink="/patient/profile">
               <img *ngIf="photoUrl()" [src]="photoUrl()" style="width:36px;height:36px;border-radius:50%;object-fit:cover;display:block;" alt=""/>
               <span *ngIf="!photoUrl()">{{ initials() }}</span>
@@ -373,6 +368,7 @@ import { ChatService }        from '../../../core/services/chat.service';
     .burger-btn:hover { background: #f0f0f0; }
     .header-spacer { flex: 1; }
     .header-actions { display: flex; align-items: center; gap: 8px; }
+    .header-icon-btn.active { background:#F4F6FA; }
     .header-icon-btn {
       position: relative;
       background: none; border: none;
@@ -382,6 +378,24 @@ import { ChatService }        from '../../../core/services/chat.service';
       display: flex; align-items: center; justify-content: center;
     }
     .header-icon-btn:hover { background: #f0f0f0; }
+    .notif-wrap { position:relative; }
+    .notif-panel { position:absolute; top:calc(100% + 8px); right:0; width:320px; background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,.12); border:1px solid #F0F2F5; z-index:200; overflow:hidden; }
+    @media(max-width:400px){ .notif-panel{width:calc(100vw - 24px); right:-12px;} }
+    .np-hdr { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid #F0F2F5; }
+    .np-title { font-size:15px; font-weight:700; color:#111; }
+    .np-mark-all { font-size:12px; font-weight:600; color:#2D4A8A; background:none; border:none; cursor:pointer; font-family:inherit; }
+    .np-empty { display:flex; flex-direction:column; align-items:center; gap:8px; padding:32px 16px; color:#aaa; font-size:13px; }
+    .np-list { max-height:340px; overflow-y:auto; scrollbar-width:none; }
+    .np-list::-webkit-scrollbar { display:none; }
+    .np-item { display:flex; align-items:flex-start; gap:10px; padding:12px 16px; border-bottom:1px solid #F8F9FC; cursor:pointer; transition:background .1s; }
+    .np-item:last-child { border-bottom:none; }
+    .np-item:hover { background:#FAFBFC; }
+    .np-item.unread { background:#FEFAF5; }
+    .np-dot { width:8px; height:8px; border-radius:50%; background:#D84040; flex-shrink:0; margin-top:5px; }
+    .np-content { flex:1; min-width:0; }
+    .np-msg { font-size:13px; font-weight:600; color:#111; line-height:1.4; }
+    .np-sub { font-size:12px; color:#6B7280; margin-top:2px; }
+    .np-time { font-size:11px; color:#9CA3AF; margin-top:4px; }
     .notif-dot {
       position: absolute; top: 4px; right: 4px;
       background: #D84040; color: #fff;
@@ -512,7 +526,24 @@ export class PatientShellComponent implements OnInit {
   sidebarCollapsed = false;
   mobileOpen       = false;
 
-  unreadCount() { return this.notifService.unreadCount(); }
+  unreadCount()  { return this.notifService.unreadCount(); }
+  notifications(){ return this.notifService.notifications(); }
+  showNotif      = false;
+
+  toggleNotif(): void { this.showNotif = !this.showNotif; }
+  markAllRead():  void { this.notifService.markAllRead().subscribe(); this.showNotif = false; }
+  markRead(n: any): void { if (!n.isRead) this.notifService.markRead(n.id).subscribe(); }
+
+  fmtNotifTime(iso: string): string {
+    if (!iso) return '';
+    const src = iso.endsWith('Z') || iso.includes('+') ? iso : iso + 'Z';
+    const d = new Date(src), now = new Date();
+    const diff = now.getTime() - d.getTime();
+    if (diff < 60000)    return 'Just now';
+    if (diff < 3600000)  return Math.floor(diff/60000) + 'm ago';
+    if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+    return d.toLocaleDateString([], { month:'short', day:'numeric' });
+  }
 
   initials(): string {
     const u = this.auth.currentUser() as any;

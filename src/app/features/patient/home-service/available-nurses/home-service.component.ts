@@ -3,8 +3,8 @@ import { CommonModule }                        from '@angular/common';
 import { FormsModule }                         from '@angular/forms';
 import { Router, ActivatedRoute }                              from '@angular/router';
 import { HttpClient }                          from '@angular/common/http';
-import { environment }                         from '../../../../environments/environment';
-import { ApiResponse, ServiceRequest }         from '../../../core/models/api.models';
+import { environment }                         from '../../../../../environments/environment';
+import { ApiResponse, ServiceRequest }         from '../../../../core/models/api.models';
 
 @Component({
   selector: 'app-home-service',

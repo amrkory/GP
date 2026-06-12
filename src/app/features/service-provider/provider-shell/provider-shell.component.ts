@@ -3,13 +3,14 @@ import { environment } from '../../../../environments/environment';
 import { Component, OnInit, inject, signal, HostListener } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule }        from '@angular/common';
+import { NotificationBellComponent } from '../../../core/components/notification-bell.component';
 import { AuthService }         from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-provider-shell',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, NotificationBellComponent, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="app-layout" [class.sidebar-collapsed]="sidebarCollapsed">
 
@@ -69,10 +70,7 @@ import { NotificationService } from '../../../core/services/notification.service
           </div>
           <div class="header-spacer"></div>
           <div class="header-right">
-            <button class="hdr-icon" routerLink="/provider/profile">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              <span class="notif-dot" *ngIf="unreadCount() > 0">{{ unreadCount() }}</span>
-            </button>
+            <app-notification-bell></app-notification-bell>
             <button class="hdr-avatar" routerLink="/provider/profile">
               <img *ngIf="photoUrl()" [src]="photoUrl()" style="width:36px;height:36px;border-radius:50%;object-fit:cover;display:block;" alt=""/>
               <span *ngIf="!photoUrl()">{{ initials() }}</span>

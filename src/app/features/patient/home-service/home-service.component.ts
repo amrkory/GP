@@ -1,321 +1,454 @@
+/**
+ * Home Service Component — Patient side
+ * GET  /api/HomeService/PatientRequests  → load my requests
+ * POST /api/HomeService/book             → book a nurse
+ * GET  /api/HomeService/Nurses           → list available nurses
+ *
+ * POST body:
+ * { serviceDescription, requestedTime (ISO), address, nurseId, government }
+ */
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { CommonModule }    from '@angular/common';
-import { FormsModule }     from '@angular/forms';
-import { Router }          from '@angular/router';
-import { HttpClient }      from '@angular/common/http';
-import { environment }     from '../../../../environments/environment';
+import { CommonModule, DatePipe } from '@angular/common';
+import { FormsModule }   from '@angular/forms';
+import { HttpClient }    from '@angular/common/http';
+import { environment }   from '../../../../environments/environment';
+
+const GOVS = [
+  'Cairo','Giza','Alexandria','Dakahlia','Red Sea','Beheira','Fayoum',
+  'Gharbia','Ismailia','Menofia','Minya','Qalyubia','New Valley','Suez',
+  'Aswan','Assiut','Beni Suef','Port Said','Damietta','Sharqia','South Sinai',
+  'Kafr El Sheikh','Matrouh','Luxor','Qena','North Sinai','Sohag',
+];
+
+function toArr(res: any): any[] {
+  if (Array.isArray(res))              return res;
+  if (Array.isArray(res?.data?.items)) return res.data.items;
+  if (Array.isArray(res?.data))        return res.data;
+  if (Array.isArray(res?.items))       return res.items;
+  return [];
+}
 
 @Component({
   selector: 'app-home-service',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DatePipe],
   template: `
-    <div class="page">
+<div class="page">
 
-      <!-- Page title -->
-      <div class="page-hdr">
-        <div>
-          <h1>Home Service</h1>
-          <p class="sub">Book a healthcare provider to visit you at home</p>
-        </div>
-      </div>
+  <div class="page-hdr">
+    <div>
+      <h1>Home Service</h1>
+      <p class="sub">Book a healthcare provider to visit you at home</p>
+    </div>
+  </div>
 
-      <!-- Service type selector -->
-      <p class="section-lbl">SELECT SERVICE TYPE</p>
-      <div class="service-grid">
-        <div class="svc-card" *ngFor="let s of services"
-             [class.active]="serviceType === s.type"
-             (click)="serviceType = s.type">
-          <div class="svc-ico" [style.background]="serviceType === s.type ? s.light : '#f5f5f5'">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                 [attr.stroke]="serviceType === s.type ? s.color : '#aaa'" stroke-width="2">
-              <ng-container [ngSwitch]="s.type">
-                <ng-container *ngSwitchCase="'Nursing'">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 21.5 16h.42Z"/>
-                </ng-container>
-                <ng-container *ngSwitchCase="'Physiotherapy'">
-                  <circle cx="12" cy="5" r="3"/><path d="m9 22 1-5H4l6-10h4L8 17h6z"/>
-                </ng-container>
-                <ng-container *ngSwitchCase="'Caregiver'">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </ng-container>
-                <ng-container *ngSwitchCase="'LabTechnician'">
-                  <path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11l-4 7h14l-4-7V3"/>
-                </ng-container>
-                <ng-container *ngSwitchCase="'Midwifery'">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                </ng-container>
-                <ng-container *ngSwitchDefault>
-                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                </ng-container>
-              </ng-container>
-            </svg>
-          </div>
-          <div class="svc-name" [style.color]="serviceType === s.type ? s.color : '#111'">{{ s.name }}</div>
-          <div class="svc-desc">{{ s.desc }}</div>
-        </div>
-      </div>
+  <div class="main-grid">
 
-      <!-- Two column layout -->
-      <div class="two-col">
-
-        <!-- Request form -->
-        <div class="form-card">
-          <h3>Request Details</h3>
-
-          <div class="field">
-            <label>Your Address <span class="req-mark">*</span></label>
-            <input class="inp" [(ngModel)]="address" type="text"
-                   placeholder="e.g. 45 Tahrir St, Cairo, Egypt" />
-          </div>
-
-          <div class="field">
-            <label>Preferred Date &amp; Time <span class="req-mark">*</span></label>
-            <input class="inp" [(ngModel)]="scheduledAt" type="datetime-local" [min]="minDate()" />
-            <p class="field-hint">The provider will confirm availability for this time.</p>
-          </div>
-
-          <div class="field">
-            <label>Notes <span class="opt">(optional)</span></label>
-            <textarea class="inp ta" [(ngModel)]="notes" rows="3"
-                      placeholder="Medical notes, special instructions..."></textarea>
-          </div>
-
-          <div class="alert-success" *ngIf="sent()">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            Request sent! A provider will contact you shortly.
-          </div>
-          <div class="alert-error" *ngIf="err()">{{ err() }}</div>
-
-          <button class="btn-browse" (click)="browseProviders()">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            Browse Available Providers
-          </button>
+    <!-- ═══════════ LEFT: Booking form ═══════════ -->
+    <div class="form-col">
+      <div class="form-card">
+        <div class="form-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D84040" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+          Book a Nurse Visit
         </div>
 
-        <!-- My Requests -->
-        <div class="requests-col">
-          <div class="requests-hdr">
-            <h3>My Requests</h3>
-            <span class="req-badge" *ngIf="requests().length > 0">{{ requests().length }}</span>
+        <!-- Service description -->
+        <div class="field">
+          <label>Service Needed <span class="req">*</span></label>
+          <textarea [(ngModel)]="form.serviceDescription" class="inp ta" rows="3"
+                    placeholder="Describe what service you need (e.g. wound dressing, medication injection, blood pressure monitoring)...">
+          </textarea>
+        </div>
+
+        <!-- Date & Time -->
+        <div class="field">
+          <label>Preferred Date &amp; Time <span class="req">*</span></label>
+          <input [(ngModel)]="form.requestedTime" type="datetime-local"
+                 class="inp" [min]="minDate()" />
+          <p class="hint">The nurse will confirm availability.</p>
+        </div>
+
+        <!-- Address + Government row -->
+        <div class="row-2">
+          <div class="field">
+            <label>Your Address <span class="req">*</span></label>
+            <input [(ngModel)]="form.address" class="inp"
+                   placeholder="Street, building, flat..." />
+          </div>
+          <div class="field">
+            <label>Governorate <span class="req">*</span></label>
+            <select [(ngModel)]="form.government" class="inp" (change)="onGovChange()">
+              <option value="">Select governorate</option>
+              <option *ngFor="let g of govs" [value]="g">{{ g }}</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Nurse selection -->
+        <div class="field">
+          <label>Select Nurse <span class="req">*</span></label>
+          <div class="nurse-search">
+            <button class="btn-load-nurses" (click)="loadNurses()"
+                    [disabled]="loadingNurses() || !form.government">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              {{ loadingNurses() ? 'Loading…' : form.government ? 'Find Nurses in ' + form.government : 'Find All Available Nurses' }}
+            </button>
           </div>
 
-          <div class="loading-sm" *ngIf="loadingReqs()">
-            <div class="spin-sm"></div>
-          </div>
-
-          <div class="empty-reqs" *ngIf="!loadingReqs() && requests().length === 0">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5">
-              <rect x="3" y="4" width="18" height="18" rx="2"/>
-              <line x1="16" y1="2" x2="16" y2="6"/>
-              <line x1="8" y1="2" x2="8" y2="6"/>
-              <line x1="3" y1="10" x2="21" y2="10"/>
-            </svg>
-            <p>No service requests yet</p>
-          </div>
-
-          <div class="req-list" *ngIf="!loadingReqs() && requests().length > 0">
-            <div class="req-card" *ngFor="let r of requests()">
-
-              <!-- Top row: type + status -->
-              <div class="req-top">
-                <div class="req-type-ico">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D84040" stroke-width="2">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                  </svg>
-                </div>
-                <span class="req-type">{{ rType(r) }}</span>
-                <span class="req-status" [class]="normSt(r)">{{ stLabel(r) }}</span>
+          <!-- Nurses list -->
+          <div class="nurses-list" *ngIf="nurses().length > 0">
+            <div class="nurse-card" *ngFor="let n of nurses()"
+                 [class.selected]="form.nurseId === n.id"
+                 (click)="form.nurseId = n.id">
+              <div class="nurse-av" [style.background]="clr(nurseName(n))">{{ ini(nurseName(n)) }}</div>
+              <div class="nurse-info">
+                <div class="nurse-name">{{ nurseName(n) }}</div>
+                <div class="nurse-spec" *ngIf="n.specialization">{{ n.specialization }}</div>
+                <div class="nurse-exp" *ngIf="n.experienceYears">{{ n.experienceYears }} yrs exp</div>
               </div>
-
-              <!-- Date -->
-              <div class="req-row" *ngIf="rTime(r)">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
-                  <rect x="3" y="4" width="18" height="18" rx="2"/>
-                  <line x1="16" y1="2" x2="16" y2="6"/>
-                  <line x1="8" y1="2" x2="8" y2="6"/>
-                  <line x1="3" y1="10" x2="21" y2="10"/>
+              <div class="nurse-check" *ngIf="form.nurseId === n.id">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                  <polyline points="20 6 9 17 4 12"/>
                 </svg>
-                {{ rTime(r) | date:'EEE, MMM d · h:mm a' }}
               </div>
-
-              <!-- Address -->
-              <div class="req-row" *ngIf="rAddr(r)">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-                  <circle cx="12" cy="10" r="3"/>
-                </svg>
-                {{ rAddr(r) }}
-              </div>
-
-              <!-- Provider name if assigned -->
-              <div class="req-row provider" *ngIf="r.nurseName ?? r.providerName ?? r.nurseFirstName">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                  <circle cx="12" cy="7" r="4"/>
-                </svg>
-                Nurse: {{ r.nurseName ?? r.providerName ?? (r.nurseFirstName + ' ' + (r.nurseLastName ?? '')) }}
-              </div>
-              <!-- Service description -->
-              <div class="req-row" *ngIf="r.serviceDescription">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                </svg>
-                {{ r.serviceDescription }}
-              </div>
-
             </div>
           </div>
+
+          <div class="loading-nurses" *ngIf="loadingNurses()">
+            <div class="spin-n"></div> Loading nurses…
+          </div>
+          <div class="no-nurses" *ngIf="nurses().length === 0 && !loadingNurses() && nurseSearched">
+            No nurses available in {{ form.government }}. Try another governorate.
+          </div>
+          <p class="hint" *ngIf="nurses().length === 0 && !loadingNurses() && !nurseSearched">
+            Select a governorate and click "Find Nurses" to see available nurses.
+          </p>
         </div>
 
+        <!-- Alerts -->
+        <div class="alert-success" *ngIf="sent()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Request booked successfully! The nurse will confirm shortly.
+        </div>
+        <div class="alert-error" *ngIf="bookErr()">{{ bookErr() }}</div>
+
+        <!-- Submit -->
+        <button class="btn-book" (click)="book()" [disabled]="booking() || sent()">
+          <span class="ring" *ngIf="booking()"></span>
+          {{ booking() ? 'Booking…' : sent() ? '✓ Booked!' : 'Book Visit' }}
+        </button>
       </div>
     </div>
+
+    <!-- ═══════════ RIGHT: My Requests ═══════════ -->
+    <div class="requests-col">
+      <div class="req-hdr">
+        <h2>My Requests</h2>
+        <span class="req-count" *ngIf="requests().length > 0">{{ requests().length }}</span>
+        <button class="btn-reload" (click)="loadRequests()" title="Refresh">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="1 4 1 10 7 10"/>
+            <path d="M3.51 15a9 9 0 1 0 .49-4.5"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="loading-sm" *ngIf="loadingReqs()">
+        <div class="spin-sm"></div>
+      </div>
+
+      <div class="empty-reqs" *ngIf="!loadingReqs() && requests().length === 0">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#D0D5DD" stroke-width="1.5">
+          <rect x="3" y="4" width="18" height="18" rx="2"/>
+          <line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <p>No service requests yet</p>
+        <span>Book your first visit on the left</span>
+      </div>
+
+      <div class="req-list" *ngIf="!loadingReqs()">
+        <div class="req-card" *ngFor="let r of requests()">
+
+          <div class="req-top">
+            <div class="req-ico">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#D84040" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.62 3.38 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+            </div>
+            <div class="req-desc">{{ r.serviceDescription || r.serviceType || 'Home Visit' }}</div>
+            <span class="status-pill" [class]="stCls(r)">{{ stLabel(r) }}</span>
+          </div>
+
+          <div class="req-rows">
+            <div class="rrow" *ngIf="rTime(r)">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              {{ rTime(r) | date:'EEE, MMM d · h:mm a' }}
+            </div>
+            <div class="rrow" *ngIf="r.address">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2">
+                <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+              {{ r.address }}
+            </div>
+            <div class="rrow" *ngIf="r.government">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              </svg>
+              {{ r.government }}
+            </div>
+            <div class="rrow nurse-row" *ngIf="r.nurseName ?? r.providerName ?? r.nurseFirstName">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+              Nurse: {{ r.nurseName ?? r.providerName ?? r.nurseFirstName }}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
   `,
   styles: [`
-    * { box-sizing:border-box; margin:0; padding:0; }
-    .page { width:100%; font-family:'Cairo','Segoe UI',sans-serif; }
-    @media(max-width:768px){ .page{padding:14px;} }
-
-    .page-hdr { margin-bottom:20px; }
-    h1 { font-size:22px; font-weight:800; color:#111; }
-    .sub { font-size:13px; color:#888; margin-top:3px; }
-    .section-lbl { font-size:11px; font-weight:800; color:#aaa; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px; }
-
-    /* Service grid */
-    .service-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:24px; }
-    @media(max-width:900px){ .service-grid{grid-template-columns:repeat(3,1fr);} }
-    @media(max-width:500px){ .service-grid{grid-template-columns:repeat(2,1fr);} }
-    .svc-card { background:#fff; border-radius:14px; padding:16px 10px; text-align:center; border:1.5px solid #e8e8e8; cursor:pointer; transition:all .15s; box-shadow:0 1px 6px rgba(0,0,0,.05); }
-    .svc-card:hover { border-color:#ccc; box-shadow:0 4px 14px rgba(0,0,0,.08); }
-    .svc-card.active { border-color:#D84040; box-shadow:0 4px 14px rgba(216,64,64,.18); }
-    .svc-ico { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; transition:background .15s; }
-    .svc-name { font-size:13px; font-weight:700; margin-bottom:2px; transition:color .15s; }
-    .svc-desc { font-size:11px; color:#999; line-height:1.4; }
-
-    /* Two-col */
-    .two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-    @media(max-width:768px){ .two-col{grid-template-columns:1fr;} }
-
-    /* Form card */
-    .form-card { background:#fff; border-radius:16px; padding:22px; box-shadow:0 1px 8px rgba(0,0,0,.07); }
-    .form-card h3 { font-size:17px; font-weight:800; color:#111; margin-bottom:18px; }
-    .field { margin-bottom:14px; }
-    .field label { display:block; font-size:13px; font-weight:700; color:#333; margin-bottom:6px; }
-    .req-mark { color:#D84040; }
-    .opt { font-size:12px; color:#aaa; font-weight:400; }
-    .inp { width:100%; padding:11px 14px; border:1.5px solid #e8e8e8; border-radius:10px; font-size:14px; font-family:inherit; outline:none; transition:border-color .15s; background:#fff; }
-    .inp:focus { border-color:#D84040; }
-    .ta { resize:none; }
-    .field-hint { font-size:12px; color:#aaa; margin-top:5px; }
-
-    .alert-success { display:flex; align-items:center; gap:8px; background:#E1F5EE; color:#0F6E56; border-radius:10px; padding:11px 14px; margin-bottom:12px; font-size:13px; font-weight:600; }
-    .alert-error   { background:#FEF2F2; color:#D84040; border-radius:10px; padding:11px 14px; margin-bottom:12px; font-size:13px; }
-
-    .btn-browse { width:100%; padding:14px; background:#D84040; border:none; color:#fff; border-radius:12px; font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; font-family:inherit; transition:opacity .15s; margin-top:4px; }
-    .btn-browse:hover { opacity:.88; }
-
-    /* Requests col */
-    .requests-col { display:flex; flex-direction:column; }
-    .requests-hdr { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
-    .requests-hdr h3 { font-size:17px; font-weight:800; color:#111; }
-    .req-badge { background:#D84040; color:#fff; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; }
-
-    .loading-sm { display:flex; justify-content:center; padding:24px; }
-    .spin-sm { width:22px; height:22px; border:2px solid #f0f0f0; border-top-color:#D84040; border-radius:50%; animation:spin .7s linear infinite; }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    .page{width:100%;font-family:'Cairo','Segoe UI',sans-serif;padding-bottom:40px;}
     @keyframes spin{to{transform:rotate(360deg);}}
 
-    .empty-reqs { display:flex; flex-direction:column; align-items:center; gap:8px; padding:32px 20px; background:#fff; border-radius:14px; text-align:center; color:#aaa; font-size:13px; box-shadow:0 1px 6px rgba(0,0,0,.05); }
+    .page-hdr{margin-bottom:20px;}
+    h1{font-size:22px;font-weight:800;color:#111;}
+    .sub{font-size:13px;color:#888;margin-top:3px;}
 
-    .req-list { display:flex; flex-direction:column; gap:10px; }
-    .req-card { background:#fff; border-radius:14px; padding:14px; box-shadow:0 1px 6px rgba(0,0,0,.07); border:1.5px solid #f0f0f0; }
-    .req-top { display:flex; align-items:center; gap:8px; margin-bottom:10px; }
-    .req-type-ico { width:28px; height:28px; border-radius:8px; background:#FEF2F2; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .req-type { flex:1; font-size:14px; font-weight:700; color:#111; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .req-status { font-size:11px; padding:3px 10px; border-radius:20px; font-weight:700; flex-shrink:0; }
-    .req-status.pending    { background:#FEF9E7; color:#d4a017; }
-    .req-status.accepted   { background:#E1F5EE; color:#0F6E56; }
-    .req-status.inprogress { background:#E6F1FB; color:#185FA5; }
-    .req-status.completed  { background:#f0f0f0; color:#555; }
-    .req-status.rejected   { background:#FEF2F2; color:#D84040; }
-    .req-row { display:flex; align-items:center; gap:6px; font-size:12px; color:#666; margin-bottom:5px; }
-    .req-row:last-child { margin-bottom:0; }
-    .req-row.provider { color:#0F6E56; font-weight:600; }
+    /* Main grid */
+    .main-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;}
+    @media(max-width:900px){.main-grid{grid-template-columns:1fr;}}
+
+    /* Form */
+    .form-card{background:#fff;border-radius:18px;padding:22px;box-shadow:0 1px 10px rgba(0,0,0,.07);border:1px solid #F0F2F5;}
+    .form-title{display:flex;align-items:center;gap:8px;font-size:16px;font-weight:800;color:#111;margin-bottom:18px;}
+    .field{margin-bottom:14px;}
+    .field label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px;}
+    .req{color:#D84040;}
+    .inp{width:100%;padding:11px 14px;border:1.5px solid #E8ECF0;border-radius:11px;font-size:14px;font-family:inherit;outline:none;appearance:none;background:#fff;transition:border-color .2s;}
+    .inp:focus{border-color:#D84040;box-shadow:0 0 0 3px rgba(216,64,64,.07);}
+    .ta{resize:vertical;min-height:80px;}
+    .hint{font-size:12px;color:#9CA3AF;margin-top:5px;}
+    .nurse-loading{display:flex;align-items:center;gap:8px;padding:12px 0;}
+    .row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    @media(max-width:500px){.row-2{grid-template-columns:1fr;}}
+
+    /* Nurse search */
+    .nurse-search{margin-bottom:10px;}
+    .btn-load-nurses{display:flex;align-items:center;gap:7px;padding:9px 16px;background:#FEF2F2;color:#D84040;border:1.5px solid #FECACA;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .15s;}
+    .btn-load-nurses:hover:not(:disabled){background:#FEE2E2;}
+    .btn-load-nurses:disabled{opacity:.5;cursor:not-allowed;}
+
+    /* Nurses list */
+    .nurses-list{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow-y:auto;scrollbar-width:none;}
+    .nurses-list::-webkit-scrollbar{display:none;}
+    .loading-nurses{display:flex;align-items:center;gap:8px;padding:12px;font-size:13px;color:#888;}
+    .spin-n{width:16px;height:16px;border:2px solid #f0f0f0;border-top-color:#D84040;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+    .no-nurses{padding:12px;font-size:13px;color:#D84040;background:#FEF2F2;border-radius:10px;}
+    .nurse-card{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1.5px solid #E8ECF0;border-radius:12px;cursor:pointer;background:#F8F9FC;transition:all .15s;}
+    .nurse-card:hover{border-color:#D84040;background:#FEF2F2;}
+    .nurse-card.selected{border-color:#D84040;background:#FEF2F2;}
+    .nurse-av{width:36px;height:36px;border-radius:50%;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .nurse-info{flex:1;min-width:0;}
+    .nurse-name{font-size:13px;font-weight:700;color:#111;}
+    .nurse-spec{font-size:11px;color:#D84040;font-weight:600;}
+    .nurse-exp{font-size:11px;color:#9CA3AF;}
+    .nurse-check{width:22px;height:22px;border-radius:50%;background:#D84040;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+
+    /* Book button */
+    .alert-success{display:flex;align-items:center;gap:8px;background:#ECFDF5;color:#0F6E56;border-radius:10px;padding:11px 14px;margin-bottom:12px;font-size:13px;font-weight:600;}
+    .alert-error{background:#FEF2F2;color:#D84040;border-radius:10px;padding:11px 14px;margin-bottom:12px;font-size:13px;}
+    .btn-book{width:100%;padding:14px;background:#D84040;border:none;color:#fff;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s;margin-top:4px;}
+    .btn-book:hover:not(:disabled){opacity:.88;}
+    .btn-book:disabled{opacity:.5;cursor:not-allowed;}
+    .ring{width:16px;height:16px;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+
+    /* Right col */
+    .req-hdr{display:flex;align-items:center;gap:8px;margin-bottom:14px;}
+    h2{font-size:17px;font-weight:800;color:#111;}
+    .req-count{background:#D84040;color:#fff;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;}
+    .btn-reload{background:none;border:none;cursor:pointer;color:#9CA3AF;display:flex;padding:4px;border-radius:8px;}
+    .btn-reload:hover{color:#374151;background:#F4F6FA;}
+    .loading-sm{display:flex;justify-content:center;padding:24px;}
+    .spin-sm{width:20px;height:20px;border:2px solid #f0f0f0;border-top-color:#D84040;border-radius:50%;animation:spin .7s linear infinite;}
+    .empty-reqs{display:flex;flex-direction:column;align-items:center;gap:8px;padding:32px;background:#fff;border-radius:14px;text-align:center;border:1px solid #F0F2F5;}
+    .empty-reqs p{font-size:14px;font-weight:700;color:#374151;}
+    .empty-reqs span{font-size:12px;color:#9CA3AF;}
+
+    /* Request cards */
+    .req-list{display:flex;flex-direction:column;gap:10px;}
+    .req-card{background:#fff;border-radius:14px;padding:14px;border:1px solid #F0F2F5;box-shadow:0 1px 6px rgba(0,0,0,.05);}
+    .req-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;}
+    .req-ico{width:28px;height:28px;border-radius:8px;background:#FEF2F2;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .req-desc{flex:1;font-size:13px;font-weight:700;color:#111;line-height:1.4;}
+    .status-pill{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0;}
+    .st-pending{background:#FFFBEB;color:#D97706;}
+    .st-accepted{background:#ECFDF5;color:#0F6E56;}
+    .st-completed{background:#EEF2FF;color:#2D4A8A;}
+    .st-rejected{background:#FEF2F2;color:#D84040;}
+    .req-rows{display:flex;flex-direction:column;gap:5px;}
+    .rrow{display:flex;align-items:center;gap:6px;font-size:12px;color:#6B7280;}
+    .rrow.nurse-row{color:#0F6E56;font-weight:600;}
   `]
 })
 export class HomeServiceComponent implements OnInit {
-  private http    = inject(HttpClient);
-  readonly router = inject(Router);
+  private http = inject(HttpClient);
 
-  loadingReqs = signal(true);
-  sent        = signal(false);
-  err         = signal('');
-  requests    = signal<any[]>([]);
+  loadingReqs   = signal(true);
+  loadingNurses = signal(false);
+  booking       = signal(false);
+  sent          = signal(false);
+  bookErr       = signal('');
+  requests      = signal<any[]>([]);
+  nurses        = signal<any[]>([]);
 
-  serviceType  = 'Nursing';
-  scheduledAt  = '';
-  address      = '';
-  notes        = '';
+  nurseSearched = false;
 
-  services = [
-    { type:'Nursing',       name:'Nursing',    desc:'Wound care, injections',  color:'#D84040', light:'#FEF2F2' },
-    { type:'Physiotherapy', name:'Physio',     desc:'Rehab & exercises',       color:'#185FA5', light:'#E6F1FB' },
-    { type:'Caregiver',     name:'Caregiver',  desc:'Daily care support',      color:'#0F6E56', light:'#E1F5EE' },
-    { type:'LabTechnician', name:'Lab Test',   desc:'Blood & lab tests',       color:'#d4a017', light:'#FEF9E7' },
-    { type:'Midwifery',     name:'Midwifery',  desc:'Maternal support',        color:'#7C3AED', light:'#F3E8FF' },
-  ];
+  form = {
+    serviceDescription: '',
+    requestedTime:      '',
+    address:            '',
+    government:         '',
+    nurseId:            '',
+  };
 
-  ngOnInit(): void {
-    this.http.get<any>(`${environment.apiUrl}/HomeService/PatientRequests`).subscribe({
+  govs = GOVS;
+
+  ngOnInit(): void { this.loadRequests(); }
+
+  loadRequests(): void {
+    this.loadingReqs.set(true);
+    this.http.get<any>(`${environment.apiUrl}/HomeService/PatientRequests`, {
+      params: { pageNumber: '1', pageSize: '50' }
+    }).subscribe({
       next: (res: any) => {
-        const list: any[] = res?.data?.items ?? res?.data ?? (Array.isArray(res) ? res : []);
-        console.log('[HomeService] patient requests:', list.length, list[0]);
+        const list = toArr(res);
+        console.log('[HomeService] PatientRequests:', list.length, list[0]);
         this.requests.set(list);
         this.loadingReqs.set(false);
       },
-      error: (err) => {
-        console.error('[HomeService] PatientRequests error:', err);
-        this.loadingReqs.set(false);
+      error: () => this.loadingReqs.set(false)
+    });
+  }
+
+  onGovChange(): void { this.nurses.set([]); this.form.nurseId = ''; this.nurseSearched = false; }
+
+  loadNurses(): void {
+    if (!this.form.government) return;
+    this.loadingNurses.set(true);
+    this.nurseSearched = true;
+    this.http.get<any>(`${environment.apiUrl}/HomeService/Nurses`, {
+      params: { government: this.form.government, pageNumber: '1', pageSize: '50' }
+    }).subscribe({
+      next: (res: any) => {
+        console.log('[HomeService] Nurses raw:', JSON.stringify(res).slice(0, 300));
+        const list = toArr(res);
+        console.log('[HomeService] Nurses parsed:', list.length, list[0]);
+        this.nurses.set(list);
+        this.loadingNurses.set(false);
+      },
+      error: (e: any) => {
+        console.error('[HomeService] Nurses error:', e);
+        this.loadingNurses.set(false);
       }
     });
   }
 
-  browseProviders(): void {
-    this.router.navigate(['/patient/home-service/available-nurses'], {
-      queryParams: {
-        type:      this.serviceType,
-        address:   this.address,
-        time:      this.scheduledAt,   // ← pass chosen date/time to available-nurses
-        notes:     this.notes,
+  book(): void {
+    this.bookErr.set('');
+
+    if (!this.form.serviceDescription.trim()) { this.bookErr.set('Please describe the service needed.'); return; }
+    if (!this.form.requestedTime)             { this.bookErr.set('Please select a date and time.'); return; }
+    if (!this.form.address.trim())            { this.bookErr.set('Please enter your address.'); return; }
+    if (!this.form.government)                { this.bookErr.set('Please select your governorate.'); return; }
+    if (!this.form.nurseId)                   { this.bookErr.set('Please select a nurse.'); return; }
+
+    this.booking.set(true);
+
+    // POST /api/HomeService/book
+    const body = {
+      serviceDescription: this.form.serviceDescription.trim(),
+      requestedTime:      new Date(this.form.requestedTime).toISOString(),
+      address:            this.form.address.trim(),
+      nurseId:            this.form.nurseId,
+      government:         this.form.government,
+    };
+
+    console.log('[HomeService] POST /api/HomeService/book', body);
+
+    this.http.post<any>(`${environment.apiUrl}/HomeService/book`, body).subscribe({
+      next: () => {
+        this.booking.set(false);
+        this.sent.set(true);
+        this.form = { serviceDescription:'', requestedTime:'', address:'', government:'', nurseId:'' };
+        this.nurses.set([]);
+        setTimeout(() => { this.sent.set(false); this.loadRequests(); }, 2000);
+      },
+      error: (e: any) => {
+        this.booking.set(false);
+        const errs = e?.error?.errors;
+        const msg = errs
+          ? Object.entries(errs).map(([f,m]) => `${f}: ${(m as string[]).join(', ')}`).join(' | ')
+          : e?.error?.message ?? e?.error?.title ?? `Error ${e?.status}`;
+        this.bookErr.set(msg);
       }
     });
   }
 
   minDate(): string { return new Date().toISOString().slice(0, 16); }
 
-  // ── Status normalisation (same fix as everywhere) ──────────────────────
-  normSt(r: any): string {
-    const s = r?.status;
-    if (s === null || s === undefined) return 'pending';
-    if (typeof s === 'number') {
-      return ({0:'pending',1:'accepted',2:'completed',3:'rejected',4:'inprogress'} as any)[s] ?? 'pending';
-    }
-    return String(s).toLowerCase().trim();
-  }
+  rTime(r: any): string { return r?.requestedTime ?? r?.scheduledAt ?? r?.createdAt ?? ''; }
 
   stLabel(r: any): string {
-    const m: any = {pending:'Pending',accepted:'Accepted',completed:'Completed',rejected:'Rejected',inprogress:'In Progress'};
-    return m[this.normSt(r)] ?? String(r?.status ?? '');
+    const s = (r?.status ?? '').toString().toLowerCase();
+    const m: any = { pending:'Pending', accepted:'Accepted', completed:'Completed', rejected:'Rejected', inprogress:'In Progress', '0':'Pending','1':'Accepted','2':'Completed','3':'Rejected' };
+    return m[s] ?? m[r?.status] ?? String(r?.status ?? 'Pending');
   }
 
-  // ── Field helpers (try every possible backend field name) ──────────────
-  rType(r: any): string { return r?.serviceDescription ?? r?.serviceType ?? r?.type ?? 'Home Service'; }
-  rTime(r: any): string { return r?.requestedTime ?? r?.scheduledAt ?? r?.createdAt ?? ''; }
-  rAddr(r: any): string { return r?.patientAddress ?? r?.address ?? r?.location ?? ''; }
+  stCls(r: any): string {
+    const s = (r?.status ?? '').toString().toLowerCase();
+    if (s === 'accepted'  || s === '1') return 'status-pill st-accepted';
+    if (s === 'completed' || s === '2') return 'status-pill st-completed';
+    if (s === 'rejected'  || s === '3') return 'status-pill st-rejected';
+    return 'status-pill st-pending';
+  }
+
+  nurseName(n: any): string {
+    if (n?.name)      return n.name;
+    if (n?.fullName)  return n.fullName;
+    const f = n?.firstName ?? n?.first_name ?? n?.nurseFirstName ?? '';
+    const l = n?.lastName  ?? n?.last_name  ?? n?.nurseLastName  ?? '';
+    return `${f} ${l}`.trim() || n?.userName || n?.email?.split('@')[0] || 'Nurse';
+  }
+
+  ini(name: string): string {
+    const p = (name || 'N').trim().split(' ');
+    return ((p[0]?.[0] ?? 'N') + (p[1]?.[0] ?? '')).toUpperCase();
+  }
+
+  private COLORS = ['#D84040','#0F6E56','#2D4A8A','#7C3AED','#0891B2','#D97706'];
+  clr(n: string): string { return this.COLORS[(n?.charCodeAt(0) || 0) % this.COLORS.length]; }
 }

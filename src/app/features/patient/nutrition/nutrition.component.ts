@@ -3,7 +3,7 @@ import { CommonModule }  from '@angular/common';
 import { FormsModule }   from '@angular/forms';
 import { AiService }     from '../../../core/services/ai.service';
 
-interface FoodEntry { food: string; calories: number; protein?: number; carbs?: number; fat?: number; }
+interface FoodEntry { food: string; grams: number; per100g: number; calories: number; protein?: number; carbs?: number; fat?: number; fiber?: number; }
 
 @Component({
   selector: 'app-nutrition',
@@ -36,24 +36,29 @@ interface FoodEntry { food: string; calories: number; protein?: number; carbs?: 
       <div class="result-card" *ngIf="result()">
         <div class="result-header">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-          AI Analysis for "{{ result()!.food }}"
+          "{{ result()!.food }}" — {{ result()!.grams }}g
         </div>
+        <div class="per100-note">{{ result()!.per100g | number:'1.0-0' }} kcal per 100g</div>
         <div class="macros-grid">
           <div class="macro-box calories">
-            <div class="macro-num">{{ result()!.calories }}</div>
-            <div class="macro-lbl">Calories</div>
+            <div class="macro-num">{{ result()!.calories | number:'1.0-0' }}</div>
+            <div class="macro-lbl">kcal total</div>
           </div>
           <div class="macro-box protein" *ngIf="result()!.protein">
-            <div class="macro-num">{{ result()!.protein }}g</div>
+            <div class="macro-num">{{ scale(result()!.protein!, result()!.grams) | number:'1.0-1' }}g</div>
             <div class="macro-lbl">Protein</div>
           </div>
           <div class="macro-box carbs" *ngIf="result()!.carbs">
-            <div class="macro-num">{{ result()!.carbs }}g</div>
+            <div class="macro-num">{{ scale(result()!.carbs!, result()!.grams) | number:'1.0-1' }}g</div>
             <div class="macro-lbl">Carbs</div>
           </div>
           <div class="macro-box fat" *ngIf="result()!.fat">
-            <div class="macro-num">{{ result()!.fat }}g</div>
+            <div class="macro-num">{{ scale(result()!.fat!, result()!.grams) | number:'1.0-1' }}g</div>
             <div class="macro-lbl">Fat</div>
+          </div>
+          <div class="macro-box fiber" *ngIf="result()!.fiber">
+            <div class="macro-num">{{ scale(result()!.fiber!, result()!.grams) | number:'1.0-1' }}g</div>
+            <div class="macro-lbl">Fiber</div>
           </div>
         </div>
         <div class="advice" *ngIf="advice()">
@@ -100,12 +105,23 @@ interface FoodEntry { food: string; calories: number; protein?: number; carbs?: 
     </div>
   `,
   styles: [`
-    .page{padding:24px;}@media(max-width:768px){.page{padding:16px;}}
+    .page{padding:24px;max-width:640px;}@media(max-width:768px){.page{padding:16px;}}
     .page-header{margin-bottom:20px;}.page-header h1{font-size:22px;font-weight:800;color:#111;margin-bottom:4px;}
     .page-sub{font-size:14px;color:#888;}
     .search-card{background:#fff;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 1px 8px rgba(0,0,0,.06);}
     .search-title{font-size:14px;font-weight:700;color:#111;margin-bottom:12px;}
-    .search-row{display:flex;gap:10px;}
+    .search-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+    .mult-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;}
+    .mult-lbl{font-size:12px;color:#888;font-weight:600;white-space:nowrap;}
+    .mult-btn{padding:6px 12px;border:1.5px solid #e8e8e8;border-radius:20px;background:#F8F9FA;font-size:12px;font-weight:600;cursor:pointer;color:#555;font-family:inherit;transition:all .15s;white-space:nowrap;}
+    .mult-btn:hover{border-color:#0F6E56;color:#0F6E56;}
+    .mult-btn.active{background:#0F6E56;color:#fff;border-color:#0F6E56;}
+    .custom-g{position:relative;width:90px;flex-shrink:0;}
+    .grams-wrap{position:relative;width:80px;flex-shrink:0;}
+    .grams-input{width:100%;padding:12px 24px 12px 10px;border:1.5px solid #e8e8e8;border-radius:10px;font-size:14px;font-family:inherit;outline:none;appearance:none;}
+    .grams-input:focus{border-color:#0F6E56;}
+    .g-lbl{position:absolute;right:8px;top:50%;transform:translateY(-50%);font-size:12px;color:#aaa;font-weight:600;}
+    .per100-note{font-size:12px;color:#9CA3AF;margin-bottom:10px;}
     .food-input{flex:1;padding:11px 14px;border:1.5px solid #e8e8e8;border-radius:10px;font-size:14px;outline:none;font-family:'Cairo',sans-serif;}
     .food-input:focus{border-color:#0F6E56;}
     .btn-analyze{padding:11px 18px;background:#0F6E56;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px;}
@@ -150,7 +166,15 @@ export class NutritionComponent {
   error     = signal('');
   advice    = signal('');
   todayLog  = signal<FoodEntry[]>([]);
-  foodInput = '';
+  foodInput  = '';
+  multipliers = [
+    { label: '100g (1×)',  g: 100  },
+    { label: '200g (2×)',  g: 200  },
+    { label: '300g (3×)',  g: 300  },
+    { label: '150g',       g: 150  },
+    { label: '250g',       g: 250  },
+  ];
+  gramsInput = 100;
 
   suggestions = ['Koshary', 'Ful medames', 'Grilled chicken', 'Rice', 'Salad', 'Eggs', 'Bread', 'Yogurt'];
 
@@ -170,31 +194,49 @@ export class NutritionComponent {
   analyze(): void {
     const food = this.foodInput.trim();
     if (!food) return;
+    const g = Number(this.gramsInput) || 100;
     this.searching.set(true);
     this.error.set('');
     this.result.set(null);
 
+    // API returns values per 100g — we pass only the food name
     this.ai.getCalories(food).subscribe({
       next: (res: any) => {
         const d = res?.data ?? res;
-        // Backend returns various shapes - handle all
-        const calories = d?.calories ?? d?.totalCalories ?? d?.calorieCount ?? 200;
+        console.log('[Nutrition] API response:', d);
+
+        // Extract per-100g calories from any response shape
+        const per100 =
+          d?.calories_per_100g ?? d?.calories ?? d?.kcal ?? d?.energy ??
+          d?.caloriesPer100g   ?? d?.calorie  ?? d?.value ??
+          (typeof d?.result === 'number' ? d.result : null) ??
+          (typeof d === 'number' ? d : 200);
+
         const entry: FoodEntry = {
           food,
-          calories: typeof calories === 'number' ? calories : parseInt(calories) || 200,
-          protein: d?.protein ?? d?.proteinGrams,
+          grams:   g,
+          per100g: Number(per100) || 200,
+          calories: Math.round((Number(per100) || 200) * g / 100),
+          protein: d?.protein  ?? d?.protein_g  ?? d?.proteinGrams,
           carbs:   d?.carbohydrates ?? d?.carbs ?? d?.carbsGrams,
-          fat:     d?.fat ?? d?.fatGrams,
+          fat:     d?.fat      ?? d?.fat_g      ?? d?.fatGrams,
+          fiber:   d?.fiber    ?? d?.fiber_g    ?? null,
         };
         this.result.set(entry);
         this.advice.set(d?.nutritionAdvice ?? d?.advice ?? '');
         this.searching.set(false);
       },
-      error: () => {
-        this.error.set('Could not analyze this food. Please try again.');
+      error: (err: any) => {
+        console.error('[Nutrition] API error:', err);
+        this.error.set(err?.error?.message ?? 'Could not analyze this food. Please try again.');
         this.searching.set(false);
       },
     });
+  }
+
+  /** Scale per-100g macro to actual grams */
+  scale(per100g: number, grams: number): number {
+    return (per100g * grams) / 100;
   }
 
   addToLog(): void {
@@ -202,7 +244,8 @@ export class NutritionComponent {
     if (!r) return;
     this.todayLog.update((log: FoodEntry[]) => [...log, { ...r }]);
     this.result.set(null);
-    this.foodInput = '';
+    this.foodInput  = '';
+    this.gramsInput = 100;
   }
 
   removeItem(index: number): void {

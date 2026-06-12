@@ -1,6 +1,7 @@
 import { Component, OnInit, inject, signal, HostListener } from '@angular/core';
 import { RouterOutlet, RouterLink, RouterLinkActive }       from '@angular/router';
 import { CommonModule }        from '@angular/common';
+import { NotificationBellComponent } from '../../../core/components/notification-bell.component';
 import { ProfileService } from '../../../core/services/profile.service';
 import { AuthService }         from '../../../core/services/auth.service';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -8,7 +9,7 @@ import { NotificationService } from '../../../core/services/notification.service
 @Component({
   selector: 'app-doctor-shell',
   standalone: true,
-  imports: [CommonModule, RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [CommonModule, NotificationBellComponent, RouterOutlet, RouterLink, RouterLinkActive],
   template: `
     <div class="app-layout" [class.sidebar-collapsed]="sidebarCollapsed">
 
@@ -90,10 +91,7 @@ import { NotificationService } from '../../../core/services/notification.service
             <span class="hdr-name">Wateen</span>
           </div>
           <div class="hdr-actions">
-            <button class="hdr-icon-btn" routerLink="/doctor/notifications">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-              <span class="notif-dot" *ngIf="unreadCount() > 0"></span>
-            </button>
+            <app-notification-bell></app-notification-bell>
             <a routerLink="/doctor/profile" class="hdr-avatar-link">
               <img *ngIf="avatarUrl()" [src]="avatarUrl()" class="hdr-avatar-img" alt="" />
               <div *ngIf="!avatarUrl()" class="hdr-avatar">{{ initials() }}</div>

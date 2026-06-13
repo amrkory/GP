@@ -39,6 +39,7 @@ export class AuthService {
           const decoded = jwtDecode(token);
           console.log('[Auth] JWT decoded:', decoded);
           console.log('[Auth] Role detected:', this.extractRole(decoded));
+          console.log('[Auth] All claims:', Object.keys(decoded));
         }
       })
     );
@@ -51,7 +52,7 @@ export class AuthService {
   resetPassword(dto: any): Observable<any>    { return this.http.post(`${this.api}/Auth/reset-password`, dto); }
   changePassword(dto: any): Observable<any>   { return this.http.post(`${this.api}/Auth/change/password`, dto); }
   acceptReject(userId: string, ok: boolean): Observable<any> {
-    return this.http.post(`${this.api}/Admin/accept-reject`, { userId, isAccepted: ok });
+    return this.http.post(`${this.api}/Admin/accept-reject`, { userId, accept: ok });
   }
   refresh(): Observable<any> { return this.http.post<any>(`${this.api}/Auth/refresh`, {}); }
 

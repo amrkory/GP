@@ -154,23 +154,29 @@ export class LoginComponent {
       },
       error: (err: any) => {
         this.loading.set(false);
-        // Check backend message first — it may give more detail
+        console.error('[Login] error:', err?.status, err?.error);
+
         const backendMsg: string = (
           err?.error?.message ?? err?.error?.title ?? err?.error ?? ''
-        ).toString().toLowerCase();
+        ).toString();
 
-        if (backendMsg.includes('pending') || backendMsg.includes('approval') || backendMsg.includes('approved')) {
-          this.errorMsg.set('Your account is pending admin approval. Please wait for an admin to approve your account.');
-        } else if (backendMsg.includes('not active') || backendMsg.includes('inactive') || backendMsg.includes('disabled')) {
-          this.errorMsg.set('Your account is not active yet. Please contact support.');
+        const lower = backendMsg.toLowerCase();
+
+        if (lower.includes('pending') || lower.includes('approval')) {
+          this.errorMsg.set('⏳ Your account is pending admin approval.');
+        } else if (lower.includes('not active') || lower.includes('inactive') || lower.includes('disabled')) {
+          this.errorMsg.set('❌ Your account is not active. Contact support.');
         } else if (err.status === 401) {
           this.errorMsg.set('Incorrect email or password.');
+        } else if (err.status === 403) {
+          this.errorMsg.set('⏳ Your account is not approved yet. Contact admin.');
         } else if (err.status === 423) {
           this.errorMsg.set('Account locked. Try again in 15 minutes.');
-        } else if (err.status === 403) {
-          this.errorMsg.set('Your account is pending admin approval. Please wait for approval.');
+        } else if (backendMsg) {
+          // Show raw backend message so we know exactly what's happening
+          this.errorMsg.set(backendMsg);
         } else {
-          this.errorMsg.set(err?.error?.message ?? 'Something went wrong. Please try again.');
+          this.errorMsg.set(`Error ${err.status}: Something went wrong. Please try again.`);
         }
       },
     });

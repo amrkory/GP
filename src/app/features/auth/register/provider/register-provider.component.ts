@@ -1,223 +1,237 @@
+/**
+ * Nurse/Provider Registration
+ * POST /api/Auth/register/nurse
+ * {firstName, lastName, email, password, confirmPassword,
+ *  licenseNumber, specialization, experienceYears,
+ *  nursePhoneNumber, isActive}
+ */
 import { Component, signal, inject } from '@angular/core';
-import { FormBuilder, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLink }        from '@angular/router';
-import { CommonModule }              from '@angular/common';
-import { HttpClient }                from '@angular/common/http';
-import { environment }               from '../../../../../environments/environment';
+import { CommonModule }   from '@angular/common';
+import { FormsModule }    from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
+import { HttpClient }     from '@angular/common/http';
+import { environment }    from '../../../../../environments/environment';
+
+const SPECS = [
+  'General Nursing','Wound Care','Physiotherapy','Lab Technician',
+  'Caregiver','Pediatric Nursing','Geriatric Care','Psychiatric Nursing',
+  'Home Health Aide','Injection & IV','Other'
+];
 
 @Component({
   selector: 'app-register-provider',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
-    <div class="auth-page">
-      <div class="auth-card">
-        <button class="back-btn" (click)="router.navigate(['/auth/register'])">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-          Back
-        </button>
+<div class="page">
+  <div class="card">
 
-        <h1 class="auth-title">Home Service Registration</h1>
-        <p class="auth-sub">Create your provider account</p>
-
-        <div class="alert-error" *ngIf="errorMsg()">{{ errorMsg() }}</div>
-
-        <form [formGroup]="form" (ngSubmit)="submit()">
-
-          <!-- Personal Information -->
-          <div class="form-section">
-            <h3>Personal Information</h3>
-
-            <div class="row-2">
-              <div class="field">
-                <label>First Name <span class="req">*</span></label>
-                <div class="input-wrap" [class.invalid]="f['firstName'].touched && f['firstName'].invalid">
-                  <span class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-                  <input formControlName="firstName" placeholder="First name" />
-                </div>
-                <div class="field-error" *ngIf="f['firstName'].touched && f['firstName'].errors?.['required']">Required</div>
-              </div>
-              <div class="field">
-                <label>Last Name <span class="req">*</span></label>
-                <div class="input-wrap" [class.invalid]="f['lastName'].touched && f['lastName'].invalid">
-                  <span class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
-                  <input formControlName="lastName" placeholder="Last name" />
-                </div>
-                <div class="field-error" *ngIf="f['lastName'].touched && f['lastName'].errors?.['required']">Required</div>
-              </div>
-            </div>
-
-            <div class="field">
-              <label>Email <span class="req">*</span></label>
-              <div class="input-wrap" [class.invalid]="f['email'].touched && f['email'].invalid">
-                <span class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></span>
-                <input formControlName="email" type="email" placeholder="your@email.com" />
-              </div>
-              <div class="field-error" *ngIf="f['email'].touched && f['email'].errors?.['required']">Email is required</div>
-              <div class="field-error" *ngIf="f['email'].touched && f['email'].errors?.['email']">Enter a valid email</div>
-            </div>
-
-            <div class="field">
-              <label>Password <span class="req">*</span></label>
-              <div class="input-wrap" [class.invalid]="f['password'].touched && f['password'].invalid">
-                <span class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
-                <input formControlName="password" [type]="showPw() ? 'text' : 'password'" placeholder="Min 8 characters" />
-                <button type="button" class="eye-btn" (click)="togglePw()">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path *ngIf="!showPw()" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle *ngIf="!showPw()" cx="12" cy="12" r="3"/>
-                    <path *ngIf="showPw()" d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                    <line *ngIf="showPw()" x1="1" y1="1" x2="23" y2="23"/>
-                  </svg>
-                </button>
-              </div>
-              <div class="field-error" *ngIf="f['password'].touched && f['password'].errors?.['required']">Password is required</div>
-              <div class="field-error" *ngIf="f['password'].touched && f['password'].errors?.['minlength']">At least 8 characters</div>
-            </div>
-
-            <div class="field">
-              <label>Phone <span class="req">*</span></label>
-              <div class="input-wrap" [class.invalid]="f['phone'].touched && f['phone'].invalid">
-                <span class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 16h.42Z"/></svg></span>
-                <input formControlName="phone" type="tel" placeholder="e.g. 01012345678" />
-              </div>
-              <div class="field-error" *ngIf="f['phone'].touched && f['phone'].errors?.['required']">Phone is required</div>
-            </div>
-          </div>
-
-          <!-- Service Details -->
-          <div class="form-section">
-            <h3>Service Details</h3>
-
-            <div class="field">
-              <label>Service Type <span class="req">*</span></label>
-              <div class="input-wrap" [class.invalid]="f['serviceType'].touched && f['serviceType'].invalid">
-                <span class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></span>
-                <select formControlName="serviceType" style="padding-left:42px">
-                  <option value="">Select service type</option>
-                  <option value="Nursing">Nursing</option>
-                  <option value="Physiotherapy">Physiotherapy</option>
-                  <option value="LabTechnician">Lab Technician</option>
-                  <option value="HomeDoctor">Home Doctor</option>
-                  <option value="Caregiver">Caregiver</option>
-                </select>
-              </div>
-              <div class="field-error" *ngIf="f['serviceType'].touched && f['serviceType'].errors?.['required']">Service type is required</div>
-            </div>
-
-            <div class="field">
-              <label>License Number <span class="req">*</span></label>
-              <div class="input-wrap" [class.invalid]="f['licenseNumber'].touched && f['licenseNumber'].invalid">
-                <span class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg></span>
-                <input formControlName="licenseNumber" placeholder="e.g. LIC-2024-001" />
-              </div>
-              <div class="field-error" *ngIf="f['licenseNumber'].touched && f['licenseNumber'].errors?.['required']">License number is required</div>
-            </div>
-
-            <div class="field">
-              <label>Years of Experience</label>
-              <div class="input-wrap">
-                <span class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
-                <input formControlName="experience" type="number" placeholder="e.g. 3" min="0" />
-              </div>
-            </div>
-          </div>
-
-          <button class="btn-primary" type="submit" [disabled]="loading()">
-            <span class="spinner" *ngIf="loading()"></span>
-            {{ loading() ? 'Creating Account...' : 'Create Account' }}
-          </button>
-
-          <div class="auth-footer">
-            Already have an account? <a routerLink="/auth/login">Sign In</a>
-          </div>
-
-        </form>
+    <div class="brand">
+      <div class="brand-ico">
+        <svg viewBox="0 0 24 24"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402z" fill="white"/></svg>
       </div>
+      <span>Wateen</span>
     </div>
+
+    <h1>Nurse Registration</h1>
+    <p class="sub">Join as a home healthcare provider</p>
+
+    <!-- SUCCESS -->
+    <div class="success-box" *ngIf="success()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      Registration submitted! Your account is pending admin approval.
+      <a routerLink="/auth/login" class="btn-login-now">Go to Login →</a>
+    </div>
+
+    <ng-container *ngIf="!success()">
+
+      <div class="field-row">
+        <div class="field">
+          <label>First Name *</label>
+          <input [(ngModel)]="form.firstName" placeholder="Sara" [class.err]="touched && !form.firstName"/>
+          <span class="ferr" *ngIf="touched && !form.firstName">Required</span>
+        </div>
+        <div class="field">
+          <label>Last Name *</label>
+          <input [(ngModel)]="form.lastName" placeholder="Ahmed" [class.err]="touched && !form.lastName"/>
+          <span class="ferr" *ngIf="touched && !form.lastName">Required</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Email *</label>
+        <input [(ngModel)]="form.email" type="email" placeholder="nurse@example.com"
+               [class.err]="touched && !isValidEmail(form.email)"/>
+        <span class="ferr" *ngIf="touched && !isValidEmail(form.email)">Valid email required</span>
+      </div>
+
+      <div class="field">
+        <label>Phone Number *</label>
+        <input [(ngModel)]="form.nursePhoneNumber" type="tel" placeholder="01xxxxxxxxx"
+               [class.err]="touched && !form.nursePhoneNumber"/>
+        <span class="ferr" *ngIf="touched && !form.nursePhoneNumber">Required</span>
+      </div>
+
+      <div class="field">
+        <label>Password *</label>
+        <div class="pw-wrap">
+          <input [(ngModel)]="form.password" [type]="showPw ? 'text' : 'password'"
+                 placeholder="Min. 8 characters" [class.err]="touched && form.password.length < 8"/>
+          <button type="button" class="eye" (click)="showPw=!showPw">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </button>
+        </div>
+        <span class="ferr" *ngIf="touched && form.password.length < 8">Min. 8 characters</span>
+      </div>
+
+      <div class="field">
+        <label>Confirm Password *</label>
+        <input [(ngModel)]="form.confirmPassword" type="password" placeholder="Repeat password"
+               [class.err]="touched && form.confirmPassword !== form.password"/>
+        <span class="ferr" *ngIf="touched && form.confirmPassword !== form.password">Passwords don't match</span>
+      </div>
+
+      <div class="field">
+        <label>Specialization *</label>
+        <select [(ngModel)]="form.specialization" [class.err]="touched && !form.specialization">
+          <option value="">Select service type</option>
+          <option *ngFor="let s of specs" [value]="s">{{ s }}</option>
+        </select>
+        <span class="ferr" *ngIf="touched && !form.specialization">Required</span>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>License Number *</label>
+          <input [(ngModel)]="form.licenseNumber" placeholder="LIC-xxx"
+                 [class.err]="touched && !form.licenseNumber"/>
+          <span class="ferr" *ngIf="touched && !form.licenseNumber">Required</span>
+        </div>
+        <div class="field">
+          <label>Experience (years)</label>
+          <input [(ngModel)]="form.experienceYears" type="number" min="0" placeholder="0"/>
+        </div>
+      </div>
+
+      <div class="err-box" *ngIf="errMsg()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        {{ errMsg() }}
+      </div>
+
+      <button class="btn-submit" (click)="submit()" [disabled]="loading()">
+        <span class="ring" *ngIf="loading()"></span>
+        {{ loading() ? 'Registering…' : 'Create Account' }}
+      </button>
+      <p class="login-link">Already have an account? <a routerLink="/auth/login">Sign in</a></p>
+
+    </ng-container>
+  </div>
+</div>
   `,
   styles: [`
-    .auth-page{min-height:100vh;background:#F7F8FA;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px;}
-    .auth-card{background:#fff;border-radius:20px;padding:32px 28px;width:100%;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,0.08);}
-    .back-btn{display:flex;align-items:center;gap:6px;background:none;border:none;cursor:pointer;color:#555;font-size:14px;font-family:'Cairo',sans-serif;margin-bottom:16px;padding:0;}
-    .back-btn:hover{color:#D84040;}
-    .auth-title{font-size:22px;font-weight:800;color:#111;margin-bottom:4px;}
-    .auth-sub{font-size:14px;color:#888;margin-bottom:18px;}
-    .alert-error{background:#FEF2F2;border:1px solid #FBDCDC;border-radius:10px;padding:12px 14px;font-size:14px;color:#D84040;margin-bottom:16px;}
-    .form-section{background:#F7F8FA;border-radius:14px;padding:16px;margin-bottom:16px;}
-    .form-section h3{font-size:14px;font-weight:700;color:#111;margin-bottom:14px;}
-    .field{margin-bottom:12px;}
-    .field label{display:block;font-size:13px;font-weight:600;color:#111;margin-bottom:6px;}
-    .req{color:#D84040;}
-    .row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
-    .input-wrap{position:relative;}
-    .input-icon{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#bbb;display:flex;pointer-events:none;}
-    .eye-btn{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#bbb;padding:0;display:flex;}
-    .input-wrap input,.input-wrap select{width:100%;padding:11px 14px 11px 42px;border:1.5px solid #E8E8E8;border-radius:10px;font-size:14px;font-family:'Cairo',sans-serif;color:#111;background:#fff;outline:none;transition:border-color .2s;box-sizing:border-box;appearance:none;}
-    .input-wrap input::placeholder{color:#c0c0c0;}
-    .input-wrap input:focus,.input-wrap select:focus{border-color:#D84040;box-shadow:0 0 0 3px rgba(216,64,64,0.08);}
-    .input-wrap.invalid input,.input-wrap.invalid select{border-color:#D84040;}
-    .field-error{font-size:12px;color:#D84040;margin-top:4px;}
-    .btn-primary{width:100%;padding:14px;background:#D84040;color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:700;font-family:'Cairo',sans-serif;cursor:pointer;margin-top:8px;transition:opacity .15s;}
-    .btn-primary:disabled{opacity:0.55;cursor:not-allowed;}
-    .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .auth-footer{text-align:center;font-size:14px;color:#888;margin-top:20px;}
-    .auth-footer a{color:#D84040;font-weight:600;text-decoration:none;}
-  `],
+    *{box-sizing:border-box;margin:0;padding:0;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .page{min-height:100vh;background:#F7F8FA;display:flex;align-items:center;justify-content:center;padding:20px;font-family:'Cairo','Segoe UI',sans-serif;}
+    .card{background:#fff;border-radius:20px;padding:32px;width:100%;max-width:480px;box-shadow:0 4px 24px rgba(0,0,0,.08);}
+    .brand{display:flex;align-items:center;gap:10px;margin-bottom:20px;}
+    .brand-ico{width:36px;height:36px;background:#0F6E56;border-radius:10px;display:flex;align-items:center;justify-content:center;}
+    .brand-ico svg{width:18px;height:18px;}
+    .brand span{font-size:18px;font-weight:800;color:#111;}
+    h1{font-size:22px;font-weight:800;color:#111;margin-bottom:4px;}
+    .sub{font-size:13px;color:#888;margin-bottom:20px;}
+    .field{margin-bottom:14px;}
+    .field label{display:block;font-size:12px;font-weight:700;color:#374151;margin-bottom:6px;text-transform:uppercase;letter-spacing:.3px;}
+    .field input,.field select{width:100%;padding:11px 14px;border:1.5px solid #E8ECF0;border-radius:11px;font-size:14px;font-family:inherit;outline:none;appearance:none;background:#fff;}
+    .field input:focus,.field select:focus{border-color:#0F6E56;}
+    .field input.err,.field select.err{border-color:#D84040;}
+    .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    @media(max-width:480px){.field-row{grid-template-columns:1fr;}}
+    .pw-wrap{position:relative;}
+    .pw-wrap input{padding-right:42px;}
+    .eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#9CA3AF;display:flex;}
+    .ferr{font-size:11px;color:#D84040;margin-top:4px;display:block;}
+    .btn-submit{width:100%;padding:13px;background:#0F6E56;color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:4px;}
+    .btn-submit:disabled{opacity:.5;}
+    .ring{width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;}
+    .login-link{text-align:center;margin-top:14px;font-size:13px;color:#888;}
+    .login-link a{color:#0F6E56;font-weight:700;text-decoration:none;}
+    .err-box{background:#FEF2F2;border:1px solid #FECACA;color:#991B1B;border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:13px;display:flex;align-items:flex-start;gap:8px;line-height:1.5;}
+    .success-box{background:#ECFDF5;border:1px solid #A7F3D0;color:#065F46;border-radius:12px;padding:16px;font-size:14px;font-weight:600;display:flex;flex-direction:column;gap:10px;}
+    .btn-login-now{display:inline-block;padding:9px 18px;background:#0F6E56;color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;text-align:center;}
+  `]
 })
 export class RegisterProviderComponent {
-  private fb   = inject(FormBuilder);
-  private http = inject(HttpClient);
-  readonly router = inject(Router);
+  private http   = inject(HttpClient);
+  private router = inject(Router);
 
-  showPw   = signal(false);
-  loading  = signal(false);
-  errorMsg = signal('');
+  touched = false;
+  showPw  = false;
+  specs   = SPECS;
 
-  form = this.fb.group({
-    firstName:     ['', Validators.required],
-    lastName:      ['', Validators.required],
-    email:         ['', [Validators.required, Validators.email]],
-    password:      ['', [Validators.required, Validators.minLength(8)]],
-    phone:         ['', Validators.required],
-    serviceType:   ['', Validators.required],
-    licenseNumber: ['', Validators.required],
-    experience:    [''],
-  });
+  loading = signal(false);
+  errMsg  = signal('');
+  success = signal(false);
 
-  get f() { return this.form.controls; }
-  togglePw(): void { this.showPw.set(!this.showPw()); }
+  form = {
+    firstName:        '',
+    lastName:         '',
+    email:            '',
+    nursePhoneNumber: '',
+    password:         '',
+    confirmPassword:  '',
+    specialization:   '',
+    licenseNumber:    '',
+    experienceYears:  0,
+  };
+
+  isValidEmail(e: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+  }
 
   submit(): void {
-    if (this.form.invalid) { this.form.markAllAsTouched(); return; }
-    this.loading.set(true);
-    this.errorMsg.set('');
-    const v = this.form.value;
+    this.touched = true;
+    if (!this.form.firstName || !this.form.lastName)       return;
+    if (!this.isValidEmail(this.form.email))               return;
+    if (!this.form.nursePhoneNumber)                        return;
+    if (this.form.password.length < 8)                     return;
+    if (this.form.confirmPassword !== this.form.password)  return;
+    if (!this.form.specialization || !this.form.licenseNumber) return;
 
-    // Exact field names from /api/Auth/register/nurse Swagger spec
+    this.loading.set(true);
+    this.errMsg.set('');
+
     const body = {
-      firstName:        v.firstName,
-      lastName:         v.lastName,
-      email:            v.email,
-      password:         v.password,
-      confirmPassword:  v.password,
-      licenseNumber:    v.licenseNumber,
-      specialization:   v.serviceType,
-      experienceYears:  Number(v.experience ?? 0),
-      nursePhoneNumber: v.phone,
+      firstName:        this.form.firstName.trim(),
+      lastName:         this.form.lastName.trim(),
+      email:            this.form.email.trim(),
+      password:         this.form.password,
+      confirmPassword:  this.form.confirmPassword,
+      licenseNumber:    this.form.licenseNumber.trim(),
+      specialization:   this.form.specialization,
+      experienceYears:  Number(this.form.experienceYears) || 0,
+      nursePhoneNumber: this.form.nursePhoneNumber.trim(),
       isActive:         true,
     };
 
+    console.log('[RegisterNurse] POST body:', body);
+
     this.http.post<any>(`${environment.apiUrl}/Auth/register/nurse`, body).subscribe({
-      next: () => this.router.navigate(['/auth/login'], { queryParams: { registered: true } }),
-      error: (err: any) => {
+      next: () => { this.loading.set(false); this.success.set(true); },
+      error: (e: any) => {
         this.loading.set(false);
-        const msg = err?.error?.message
-          ?? (Array.isArray(err?.error?.errors) ? err.error.errors.join(', ') : null)
-          ?? err?.error?.title
-          ?? 'Registration failed. Please check all fields.';
-        this.errorMsg.set(msg);
-      },
+        const errs = e?.error?.errors;
+        const msg  = errs
+          ? Object.entries(errs).map(([f, m]) => `${f}: ${(m as string[]).join(', ')}`).join('\n')
+          : e?.error?.message ?? e?.error?.title ?? `Error ${e?.status}`;
+        this.errMsg.set(msg);
+        console.error('[RegisterNurse] error:', e?.error);
+      }
     });
   }
 }

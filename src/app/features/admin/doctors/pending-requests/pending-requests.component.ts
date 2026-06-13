@@ -109,7 +109,7 @@ import { catchError }     from 'rxjs/operators';
     </div>
   `,
   styles: [`
-    .page{padding:24px;max-width:1100px;}@media(max-width:768px){.page{padding:16px;}}
+    .page{padding:24px;width:100%;}@media(max-width:768px){.page{padding:16px;}}
     .page-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
     .page-header h1{font-size:22px;font-weight:800;color:#111;margin-bottom:2px;}
     .page-sub{font-size:14px;color:#888;}
@@ -211,7 +211,7 @@ export class PendingRequestsComponent implements OnInit {
 
   approve(d: any): void {
     this.acting.set(d.id + 'approve');
-    this.http.post<any>(`${environment.apiUrl}/Admin/accept-reject`, { userId: d.id, isAccepted: true })
+    this.http.post<any>(`${environment.apiUrl}/Admin/accept-reject`, { userId: d.id, accept: true })
       .subscribe({
         next: () => {
           this.pending.update(list => list.filter(x => x.id !== d.id));
@@ -232,7 +232,7 @@ export class PendingRequestsComponent implements OnInit {
   doReject(): void {
     if (!this.rejectTarget || !this.rejectReason) return;
     this.acting.set(this.rejectTarget.id);
-    this.http.post<any>(`${environment.apiUrl}/Admin/accept-reject`, { userId: this.rejectTarget.id, isAccepted: false })
+    this.http.post<any>(`${environment.apiUrl}/Admin/accept-reject`, { userId: this.rejectTarget.id, accept: false })
       .subscribe({
         next: () => {
           this.pending.update(list => list.filter(x => x.id !== this.rejectTarget.id));

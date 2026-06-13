@@ -38,7 +38,15 @@ export class ProviderManagementComponent implements OnInit {
   private http = inject(HttpClient);
   loading = signal(true); all = signal<any[]>([]);
   ngOnInit(): void {
-    this.http.get<any>(`${environment.apiUrl}/admin/providers`)
-      .subscribe(res => { this.all.set(res.data.items ?? res.data ?? []); this.loading.set(false); });
+    this.http.get<any>(`${environment.apiUrl}/Admin/pending/nurses`).subscribe({
+      next: (res: any) => {
+        const d = res?.data ?? res;
+        const list = Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : [];
+        console.log('[ProviderMgmt] pending nurses:', list.length, list[0]);
+        this.all.set(list);
+        this.loading.set(false);
+      },
+      error: (e) => { console.error('[ProviderMgmt] error:', e); this.loading.set(false); }
+    });
   }
 }

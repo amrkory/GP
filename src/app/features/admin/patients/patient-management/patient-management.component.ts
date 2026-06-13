@@ -104,7 +104,32 @@ export class PatientManagementComponent implements OnInit {
   private http = inject(HttpClient);
   loading = signal(true); all = signal<any[]>([]); filtered = signal<any[]>([]);
   q = ''; showDeleteDialog = false; deleteTargetId = '';
-  ngOnInit(): void { this.http.get<any>(`${environment.apiUrl}/Admin/pending/nurses`).subscribe((res: any) => { this.all.set(res.data.items ?? res.data); this.filtered.set(this.all()); this.loading.set(false); }); }
+  totalCount = signal(0);
+
+  ngOnInit(): void {
+    // Get total count
+    this.http.get<any>(`${environment.apiUrl}/Admin/patients/count`).subscribe({
+      next: (res: any) => {
+        const v = res?.data ?? res;
+        const n = typeof v === 'number' ? v : (v?.count ?? v?.total ?? v?.value ?? 0);
+        this.totalCount.set(Number(n) || 0);
+      }
+    });
+    // Get patients list — try Profile/patientData with admin scope
+    this.http.get<any>(`${environment.apiUrl}/Profile/patientData`, {
+      params: { pageNumber: '1', pageSize: '100' }
+    }).subscribe({
+      next: (res: any) => {
+        const d = res?.data ?? res;
+        const list = Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : (d && typeof d === 'object' && !Array.isArray(d) ? [d] : []);
+        console.log('[PatientMgmt] list:', list.length, list[0]);
+        this.all.set(list);
+        this.filtered.set(list);
+        this.loading.set(false);
+      },
+      error: () => this.loading.set(false)
+    });
+  }
   filter(): void { const q = this.q.toLowerCase(); this.filtered.set(!q ? this.all() : this.all().filter(p => `${p.firstName} ${p.lastName} ${p.email}`.toLowerCase().includes(q))); }
   deletePatient(id: string): void { this.deleteTargetId = id; this.showDeleteDialog = true; }
   doDelete(): void {

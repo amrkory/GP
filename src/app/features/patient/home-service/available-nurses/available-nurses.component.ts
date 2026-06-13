@@ -271,15 +271,17 @@ export class AvailableNursesComponent implements OnInit {
   address      = '';
   chosenTime   = '';   // date/time chosen on the previous page
   notes        = '';
+  government   = '';
 
   private colors = ['#D84040','#2D4A8A','#0F6E56','#d4a017','#7C3AED','#0891B2','#185FA5'];
 
   ngOnInit(): void {
-    const q       = this.route.snapshot.queryParams;
-    this.serviceType = q['type']    ?? '';
-    this.address     = q['address'] ?? '';
-    this.chosenTime  = q['time']    ?? '';
-    this.notes       = q['notes']   ?? '';
+    const q              = this.route.snapshot.queryParams;
+    this.serviceType     = q['serviceDescription'] ?? q['type'] ?? '';
+    this.address         = q['address']            ?? '';
+    this.chosenTime      = q['time']               ?? '';
+    this.government      = q['government']          ?? '';
+    this.notes           = q['notes']              ?? '';
     this.loadProviders();
   }
 
@@ -288,7 +290,17 @@ export class AvailableNursesComponent implements OnInit {
       params: { pageNumber: '1', pageSize: '50' }
     }).subscribe({
       next: (res: any) => {
-        const list: any[] = res?.data?.items ?? res?.data ?? (Array.isArray(res) ? res : []);
+        let list: any[] = [];
+        if (Array.isArray(res))                   list = res;
+        else if (Array.isArray(res?.data?.items)) list = res.data.items;
+        else if (Array.isArray(res?.data))        list = res.data;
+        else if (Array.isArray(res?.items))       list = res.items;
+        else if (Array.isArray(res?.nurses))      list = res.nurses;
+        else if (Array.isArray(res?.result))      list = res.result;
+        else if (typeof res === 'object' && res !== null) {
+          const arr = Object.values(res).find(v => Array.isArray(v));
+          if (arr) list = arr as any[];
+        }
         console.log('[AvailableNurses] loaded:', list.length, list[0]);
         this.providers.set(list);
         this.loading.set(false);
@@ -313,11 +325,12 @@ export class AvailableNursesComponent implements OnInit {
       ? new Date(this.chosenTime).toISOString()
       : new Date(Date.now() + 3600000).toISOString();
 
-    const body = {
+    const body: any = {
       serviceDescription: this.serviceType || this.getSpec(p) || 'Home service request',
       requestedTime,
-      address:  this.address || 'To be confirmed',
-      nurseId:  p.id,
+      address:    this.address    || 'To be confirmed',
+      nurseId:    p.id,
+      government: this.government || undefined,
     };
 
     this.http.post<any>(`${environment.apiUrl}/HomeService/book`, body).subscribe({

@@ -97,8 +97,17 @@ export class DoctorManagementComponent implements OnInit {
   q            = '';
   statusFilter = '';
   ngOnInit(): void {
-    this.http.get<any>(`${environment.apiUrl}/Admin/pending/doctors`)
-      .subscribe((res: any) => { this.all.set(res.data.items ?? res.data); this.filtered.set(this.all()); this.loading.set(false); });
+    this.http.get<any>(`${environment.apiUrl}/Admin/pending/doctors`).subscribe({
+      next: (res: any) => {
+        const d = res?.data ?? res;
+        const list = Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : [];
+        console.log('[DoctorMgmt] pending doctors:', list.length, list[0]);
+        this.all.set(list);
+        this.filtered.set(list);
+        this.loading.set(false);
+      },
+      error: (e) => { console.error('[DoctorMgmt] error:', e); this.loading.set(false); }
+    });
   }
   filter(): void {
     let data = this.all();

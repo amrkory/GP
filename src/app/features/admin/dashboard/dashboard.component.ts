@@ -69,13 +69,16 @@ import { environment }    from '../../../../environments/environment';
         </div>
         <div class="stat-card">
           <div class="stat-icon teal">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
           </div>
           <div>
-            <div class="stat-num">{{ stats().appointmentsToday }}</div>
-            <div class="stat-lbl">Appointments Today</div>
+            <div class="stat-num">{{ stats().totalProviders | number }}</div>
+            <div class="stat-lbl">Total Providers</div>
           </div>
-          <span class="stat-link muted">Live</span>
+          <a routerLink="/admin/providers" class="stat-link">View →</a>
         </div>
       </div>
 
@@ -156,38 +159,40 @@ import { environment }    from '../../../../environments/environment';
 })
 export class AdminDashboardComponent implements OnInit {
   private http = inject(HttpClient);
-  stats = signal({ totalPatients:0, totalDoctors:0, totalAppointments:0, pendingDoctors:0, pendingProviders:0, appointmentsToday:0 });
+  stats = signal({ totalPatients:0, totalDoctors:0, totalProviders:0, totalAppointments:0, pendingDoctors:0, pendingProviders:0, appointmentsToday:0 });
   ngOnInit(): void {
-    // Load real counts from backend
-    this.http.get<any>(`${environment.apiUrl}/Admin/users/count`).subscribe({
-      next: (res: any) => {
-        const v = res?.data ?? res ?? 0;
-        this.stats.update(s => ({ ...s, totalPatients: typeof v === 'object' ? (v.patientCount ?? 0) : v }));
+    const num = (res: any): number => {
+      const v = res?.data ?? res;
+      if (typeof v === 'number') return v;
+      if (typeof v === 'object' && v !== null) {
+        return v.count ?? v.total ?? v.value ?? v.patientCount ?? v.doctorCount ?? v.nurseCount ?? 0;
       }
+      return Number(v) || 0;
+    };
+    const arr = (res: any): any[] => {
+      const d = res?.data ?? res;
+      return Array.isArray(d?.items) ? d.items : Array.isArray(d) ? d : [];
+    };
+
+    this.http.get<any>(`${environment.apiUrl}/Admin/patients/count`).subscribe({
+      next: r => this.stats.update(s => ({ ...s, totalPatients: num(r) })),
+      error: () => {}
+    });
+    this.http.get<any>(`${environment.apiUrl}/Admin/doctors/count`).subscribe({
+      next: r => this.stats.update(s => ({ ...s, totalDoctors: num(r) })),
+      error: () => {}
     });
     this.http.get<any>(`${environment.apiUrl}/Admin/nurses/count`).subscribe({
-      next: (res: any) => {
-        const v = res?.data ?? res ?? 0;
-        this.stats.update(s => ({ ...s, totalDoctors: typeof v === 'number' ? v : 0 }));
-      }
-    });
-    this.http.get<any>(`${environment.apiUrl}/Admin/patients/count`).subscribe({
-      next: (res: any) => {
-        const v = res?.data ?? res ?? 0;
-        this.stats.update(s => ({ ...s, totalPatients: typeof v === 'number' ? v : 0 }));
-      }
+      next: r => this.stats.update(s => ({ ...s, totalProviders: num(r) })),
+      error: () => {}
     });
     this.http.get<any>(`${environment.apiUrl}/Admin/pending/doctors`).subscribe({
-      next: (res: any) => {
-        const list = res?.data?.items ?? res?.data ?? [];
-        this.stats.update(s => ({ ...s, pendingDoctors: Array.isArray(list) ? list.length : 0 }));
-      }
+      next: r => this.stats.update(s => ({ ...s, pendingDoctors: arr(r).length })),
+      error: () => {}
     });
     this.http.get<any>(`${environment.apiUrl}/Admin/pending/nurses`).subscribe({
-      next: (res: any) => {
-        const list = res?.data?.items ?? res?.data ?? [];
-        this.stats.update(s => ({ ...s, pendingProviders: Array.isArray(list) ? list.length : 0 }));
-      }
+      next: r => this.stats.update(s => ({ ...s, pendingProviders: arr(r).length })),
+      error: () => {}
     });
   }
 }
